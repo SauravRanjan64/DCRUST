@@ -1,0 +1,6 @@
+import{c as o,j as e,o as c,B as l}from"./index-BPr0Azit.js";/**
+ * @license lucide-react v0.469.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const n=o("RefreshCw",[["path",{d:"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8",key:"v9h5vc"}],["path",{d:"M21 3v5h-5",key:"1q7to0"}],["path",{d:"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16",key:"3uifl3"}],["path",{d:"M8 16H3v5",key:"1cv678"}]]),d=({title:s="Unable to load data",message:t="An unexpected error occurred while fetching information. Please try again.",onRetry:r,className:a=""})=>e.jsxs("div",{className:`py-10 px-4 flex flex-col items-center justify-center text-center bg-rose-50/50 rounded-xl border border-rose-200 ${a}`,children:[e.jsx("div",{className:"w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 mb-3",children:e.jsx(c,{className:"w-5 h-5"})}),e.jsx("h3",{className:"text-sm font-semibold text-rose-900 mb-1",children:s}),e.jsx("p",{className:"text-xs text-rose-700 max-w-sm mb-4 leading-relaxed",children:t}),r&&e.jsx(l,{variant:"outline",size:"sm",onClick:r,leftIcon:n,className:"border-rose-300 text-rose-800 hover:bg-rose-100",children:"Retry"})]});export{d as E,n as R};

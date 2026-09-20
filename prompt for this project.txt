@@ -1,0 +1,6355 @@
+Today 2:03 AM
+
+Act as an expert full-stack MERN architect and senior software engineer. Build a fully functional, production-ready, enterprise-grade full-stack web application for the "DCRUST Campus Placement & Eligibility Portal". 
+
+TECH STACK & ARCHITECTURE:
+- Frontend: React.js (or Next.js App Router) with Tailwind CSS, Lucide icons, responsive flexbox/grid layouts, and an ultra-clean, minimalist slate/indigo theme.
+- Backend: Node.js and Express.js REST API structured in a clean modular monolith layout (separate routes, controllers, and middleware).
+- Database & Persistence: PostgreSQL relational database schema (or mock structured state mirroring relational tables).
+
+COMPREHENSIVE CORE MODULES TO BUILD:
+1. Multi-Role Authentication & Access Control (RBAC):
+   - Three distinct user roles with an intuitive role-switcher or role-based login screens: Student, T&P Cell (Admin), and Company (Recruiter).
+   - JWT-based authentication secured via HttpOnly cookies and route-protection middleware.
+
+2. Automated Deterministic Eligibility Engine (Backend Logic):
+   - When a student applies for a job drive, the backend instantly runs a rule validation query against their profile:
+     (student.cgpa >= job.min_cgpa) AND (job.allowed_branches includes student.branch) AND (student.active_backlogs <= job.max_backlogs).
+   - If eligible, it records the application with status 'applied'. If ineligible, it halts the request and returns a precise error banner explaining the exact mismatch.
+
+3. Resume-vs-JD Matcher Feature Module:
+   - An interactive modal where students upload/paste resume text alongside a target job description. 
+   - The system tokenizes both, strips stop words, calculates a keyword-match percentage score, and displays missing skill recommendations to the student.
+
+4. Application Tracking, Status Machines & Export:
+   - T&P Cell can create job drives, view all applicants, and export shortlisted candidate lists to CSV.
+   - Companies can view pre-filtered candidate lists (only students who passed the eligibility engine) and update application states ('Applied' -> 'Shortlisted' / 'Rejected').
+   - Students can track their application history, match scores, and real-time status changes.
+
+5. Privacy & Data Compliance (DPDP Act):
+   - Mandatory student consent checkbox on first login and complete data masking of student contact numbers until shortlisting occurs.
+
+UI/UX REQUIREMENTS:
+- Professional enterprise dashboard style with zero dead ends, smooth loading skeletons, explicit form validation states, and clear badge components (Emerald green for success/eligible states, Rose red for rejections).   
+
+I built a runnable DCRUST Campus Placement & Eligibility Portal starter implementation with:
+
+React + Tailwind + Lucide frontend
+Express modular-monolith backend
+PostgreSQL relational schema
+JWT authentication with HttpOnly cookies
+Student / Admin / Company RBAC
+Deterministic backend eligibility engine
+Exact eligibility rejection reasons
+Resume-vs-JD keyword matcher
+Application state machine
+Real-time Socket.IO status updates
+Student consent workflow
+Contact-number masking until shortlisting
+Job-drive creation
+Applicant management
+Shortlist/reject workflow
+CSV export
+Audit logging
+Security middleware, rate limiting, Helmet, validation
+Seed/demo accounts
+Responsive enterprise dashboard UI
+Download the complete project
+
+Download DCRUST Placement Portal
+
+Demo accounts
+Role	Email	Password
+Student	student@dcrust.edu.in	Student@123
+T&P Admin	admin@dcrust.edu.in	Admin@123
+Company	recruiter@acme.com	Recruiter@123
+Run locally
+# PostgreSQL
+# Create database:
+createdb dcrust_placement
+
+# Backend
+cd server
+cp .env.example .env
+npm install
+npm run db:setup
+npm run seed
+npm run dev
+
+# Frontend - new terminal
+cd client
+npm install
+npm run dev
+
+Then open:
+
+http://localhost:5173
+
+The implementation deliberately keeps the eligibility decision backend-authoritative:
+
+Student Apply
+     ↓
+Check Consent
+     ↓
+Load Student + Job
+     ↓
+CGPA ≥ minimum?
+     ↓
+Branch allowed?
+     ↓
+Backlogs ≤ maximum?
+     ↓
+ ┌───────────────┐
+ │               │
+YES             NO
+ │               │
+ ↓               ↓
+Create         Reject
+Application    + exact reasons
+ │
+ ↓
+Socket.IO status event
+ │
+ ↓
+Student / Company / T&P dashboards
+
+For an actual university production deployment, I would next split the current implementation into proper database migrations, add refresh-token rotation/session revocation, Redis-backed Socket.IO scaling, S3-compatible resume storage, comprehensive Jest/Supertest coverage, structured logging/observability, CSRF protection where applicable, stronger file scanning, PostgreSQL row-level authorization patterns, and a formal DPDP data-retention/deletion/consent policy rather than treating the current implementation as legal compliance by itself.
+
+
+
+
+
+prompt:::::::::::::::::::
+
+I want a most updated and upgraded full architecture and system design for my project. Make this design as I am a MERN developer. Make keyword most simple. Don't miss up in project. Give full system design as well as my prompt given and analyze the complexity. I want put this project in front of interviewer for product and service-based company, so make accordingly.
+
+
+
+Absolutely. For an interview-facing project, I would upgrade your current DCRUST Campus Placement & Eligibility Portal from a CRUD placement website into a realistic campus-recruitment platform with a clear product architecture, deterministic eligibility engine, recruiter workflow, T&P administration, privacy controls, auditability, and measurable engineering decisions.
+
+The important point is: do not over-engineer it into 15 microservices. As a MERN developer, the strongest architecture to explain in an interview is a modular monolith that can later evolve into services.
+
+DCRUST Campus Placement & Eligibility Portal
+Full Product + System Architecture — Interview-Ready v2
+1. First: What Your Project Actually Is
+One-line project definition
+
+DCRUST Campus Placement & Eligibility Portal is a role-based campus recruitment platform that automates student eligibility checking, job applications, recruiter shortlisting, T&P administration, resume-job matching, application tracking, and placement data management.
+
+Instead of:
+
+Student → Job → Apply
+
+your project becomes:
+
+                 ┌──────────────────────┐
+                 │   DCRUST Placement   │
+                 │       Portal         │
+                 └──────────┬───────────┘
+                            │
+       ┌────────────────────┼────────────────────┐
+       │                    │                    │
+       ▼                    ▼                    ▼
+   STUDENT              T&P CELL             COMPANY
+       │                    │                    │
+       ▼                    ▼                    ▼
+ Profile               Job Drives          Requirements
+ Eligibility            Eligibility         Applicants
+ Applications           Management          Shortlisting
+ Resume Match           Analytics           Status
+ Status                  Export
+
+This is much easier to explain to an interviewer.
+
+2. Recommended Technology Stack
+
+You originally asked for MERN.
+
+There is one architectural correction I recommend:
+
+Don't force MongoDB into this project.
+
+Your domain contains many relationships:
+
+Student
+   ↓
+Application
+   ↓
+Job
+   ↓
+Company
+   ↓
+Drive
+
+and:
+
+Student
+ ├── Education
+ ├── Skills
+ ├── Applications
+ ├── Resume
+ └── Consent
+
+This is naturally relational.
+
+So your interview architecture should be:
+
+Layer	Technology
+Frontend	React.js
+Styling	Tailwind CSS
+Icons	Lucide React
+State	TanStack Query + Context/Zustand
+Backend	Node.js
+API	Express.js
+Database	PostgreSQL
+ORM	Prisma
+Authentication	JWT + HttpOnly Cookie
+Password	Argon2id/bcrypt
+Validation	Zod
+Real-time	Socket.IO
+Cache	Redis
+File Storage	S3-compatible storage
+Email	SMTP/Resend-like provider
+Testing	Jest + Supertest
+API Docs	Swagger/OpenAPI
+Logging	Pino
+Deployment	Docker
+Reverse Proxy	Nginx
+CI/CD	GitHub Actions
+Your interview statement
+
+"Although the project is primarily a MERN-oriented full-stack application, I selected PostgreSQL instead of MongoDB because placement applications, eligibility rules, company drives, and student relationships require strong relational consistency."
+
+That is a good engineering decision to defend.
+
+3. High-Level Architecture
+
+The complete system should look like this:
+
+                         INTERNET
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │    NGINX      │
+                    │ Reverse Proxy │
+                    └───────┬───────┘
+                            │
+              ┌─────────────┴─────────────┐
+              │                           │
+              ▼                           ▼
+       React Frontend               Express API
+              │                           │
+              │                    ┌──────┴──────┐
+              │                    │             │
+              │                    ▼             ▼
+              │              REST Controllers  Socket.IO
+              │                    │
+              │                    ▼
+              │              Service Layer
+              │                    │
+              │       ┌────────────┼────────────┐
+              │       │            │            │
+              │       ▼            ▼            ▼
+              │   Eligibility   Application   Resume
+              │     Engine       Service      Matcher
+              │       │            │            │
+              │       └────────────┼────────────┘
+              │                    │
+              │                    ▼
+              │                 Prisma
+              │                    │
+              │                    ▼
+              │               PostgreSQL
+              │
+              ├──────────────► Redis
+              │
+              └──────────────► Object Storage
+4. Why Modular Monolith?
+
+This is one of the most important interview decisions.
+
+Don't say:
+
+"I created microservices."
+
+unless you actually need them.
+
+For your project:
+
+React
+  ↓
+Express
+  ↓
+Modular Monolith
+  ↓
+PostgreSQL
+
+is sufficient.
+
+Inside Express, separate modules:
+
+Auth Module
+Student Module
+Company Module
+Job Module
+Eligibility Module
+Application Module
+Resume Module
+Notification Module
+Admin Module
+Audit Module
+Analytics Module
+
+Each module behaves almost like a mini-service.
+
+Later:
+
+Modular Monolith
+       │
+       ├── Eligibility Service
+       ├── Resume Matching Service
+       ├── Notification Service
+       └── Analytics Service
+
+can be extracted if traffic requires it.
+
+Interview answer
+
+"I started with a modular monolith because the application is not large enough to justify the operational complexity of microservices. The modules are isolated through service boundaries, so high-load modules can later be extracted."
+
+That's a strong architecture answer.
+
+5. Complete User Roles
+
+You need exactly three primary roles.
+
+Student
+
+Student can:
+
+Login
+↓
+Complete profile
+↓
+Give consent
+↓
+View jobs
+↓
+Check eligibility
+↓
+Apply
+↓
+Upload resume
+↓
+Match resume with JD
+↓
+Track application
+↓
+Receive status updates
+T&P Admin
+
+T&P can:
+
+Login
+↓
+Dashboard
+↓
+Manage students
+↓
+Create company
+↓
+Create job drive
+↓
+Configure eligibility
+↓
+View applications
+↓
+Shortlist
+↓
+Reject
+↓
+Export CSV
+↓
+View analytics
+↓
+Audit actions
+Company / Recruiter
+
+Recruiter can:
+
+Login
+↓
+Company dashboard
+↓
+Create/manage job requirements
+↓
+View eligible students
+↓
+View applications
+↓
+Shortlist
+↓
+Reject
+↓
+Update hiring status
+6. Authentication Architecture
+
+Use:
+
+JWT Access Token
++
+HttpOnly Cookie
++
+RBAC
+
+Recommended flow:
+
+             LOGIN
+               │
+               ▼
+       POST /api/auth/login
+               │
+               ▼
+      Validate credentials
+               │
+               ▼
+          Check password
+               │
+               ▼
+       Generate JWT
+               │
+               ▼
+      HttpOnly Secure Cookie
+               │
+               ▼
+         Dashboard
+
+Browser cannot directly access the HttpOnly cookie through JavaScript.
+
+7. Authentication Middleware
+
+Every protected request:
+
+Request
+   │
+   ▼
+Auth Middleware
+   │
+   ├── Cookie exists?
+   │       │
+   │       └── NO → 401
+   │
+   ▼
+Verify JWT
+   │
+   ├── Invalid → 401
+   │
+   ▼
+Load user
+   │
+   ▼
+Attach req.user
+   │
+   ▼
+RBAC Middleware
+   │
+   ├── Wrong role → 403
+   │
+   ▼
+Controller
+8. RBAC Architecture
+
+Use:
+
+USER
+ ├── STUDENT
+ ├── ADMIN
+ └── COMPANY
+
+Example:
+
+GET /api/admin/applications
+
+requires:
+
+authenticate()
+authorize("ADMIN")
+
+while:
+
+POST /api/jobs/:id/apply
+
+requires:
+
+authenticate()
+authorize("STUDENT")
+9. Database Architecture
+
+This is the heart of your project.
+
+Recommended PostgreSQL structure:
+
+users
+students
+companies
+admins
+
+job_drives
+job_branches
+job_skills
+
+applications
+
+resumes
+resume_matches
+
+consents
+
+notifications
+
+audit_logs
+
+refresh_sessions
+10. Database ER Diagram
+                     ┌──────────────┐
+                     │    USERS     │
+                     ├──────────────┤
+                     │ id           │
+                     │ email        │
+                     │ passwordHash │
+                     │ role         │
+                     └──────┬───────┘
+                            │
+                ┌───────────┼───────────┐
+                │           │           │
+                ▼           ▼           ▼
+          ┌──────────┐ ┌──────────┐ ┌───────────┐
+          │ STUDENTS │ │ COMPANIES│ │  ADMINS   │
+          └────┬─────┘ └────┬─────┘ └───────────┘
+               │             │
+               │             │
+               │             ▼
+               │       ┌────────────┐
+               │       │ JOB DRIVES │
+               │       └─────┬──────┘
+               │             │
+               │             │
+               └──────┐      │
+                      ▼      ▼
+                 ┌──────────────┐
+                 │ APPLICATIONS │
+                 └──────┬───────┘
+                        │
+             ┌──────────┼──────────┐
+             ▼          ▼          ▼
+         RESUME      MATCH      STATUS
+11. User Table
+users
+
+id
+name
+email
+password_hash
+role
+is_active
+created_at
+updated_at
+last_login_at
+
+Role:
+
+STUDENT
+ADMIN
+COMPANY
+12. Student Table
+students
+
+id
+user_id
+roll_number
+registration_number
+full_name
+branch
+batch
+cgpa
+active_backlogs
+phone
+semester
+graduation_year
+profile_complete
+created_at
+updated_at
+
+Important constraints:
+
+roll_number UNIQUE
+user_id UNIQUE
+cgpa CHECK 0-10
+active_backlogs >= 0
+13. Company Table
+companies
+
+id
+user_id
+company_name
+company_email
+industry
+website
+description
+verified
+created_at
+updated_at
+14. Job Drive
+job_drives
+
+id
+company_id
+
+title
+description
+
+job_type
+location
+salary_min
+salary_max
+
+min_cgpa
+max_backlogs
+
+application_start
+application_end
+
+status
+
+created_at
+updated_at
+
+Example:
+
+Minimum CGPA = 7.0
+Maximum Backlogs = 0
+Allowed Branches = CSE, IT, ECE
+15. Branch Relationship
+
+Do not store:
+
+"CSE,IT,ECE"
+
+inside one database field.
+
+Use:
+
+job_branches
+
+job_id
+branch
+
+Example:
+
+JOB-101 | CSE
+JOB-101 | IT
+JOB-101 | ECE
+
+This is much cleaner relational design.
+
+16. Application Table
+applications
+
+id
+
+student_id
+job_id
+
+status
+
+eligibility_snapshot
+
+resume_id
+match_score
+
+applied_at
+updated_at
+shortlisted_at
+rejected_at
+
+Status:
+
+APPLIED
+SHORTLISTED
+REJECTED
+SELECTED
+WITHDRAWN
+17. Eligibility Engine
+
+This is your most important backend feature.
+
+Don't make eligibility logic inside the React frontend.
+
+The frontend can display eligibility.
+
+The backend decides it.
+
+18. Eligibility Flow
+Student clicks APPLY
+       │
+       ▼
+POST /api/jobs/:jobId/apply
+       │
+       ▼
+Authentication
+       │
+       ▼
+Check student consent
+       │
+       ▼
+Load student
+       │
+       ▼
+Load job
+       │
+       ▼
+Eligibility Engine
+       │
+       ├───────────────┐
+       │               │
+       ▼               ▼
+    Eligible        Ineligible
+       │               │
+       ▼               ▼
+Create            Return reasons
+Application
+19. Eligibility Rules
+
+Your core rule:
+
+student.cgpa >= job.min_cgpa
+
+AND
+
+student.branch IN job.allowed_branches
+
+AND
+
+student.active_backlogs <= job.max_backlogs
+
+But upgrade it slightly.
+
+Recommended engine:
+
+1. Profile complete
+2. Consent active
+3. CGPA requirement
+4. Branch requirement
+5. Backlog requirement
+6. Graduation batch
+7. Application window
+8. Duplicate application
+9. Drive status
+20. Eligibility Result
+
+Instead of:
+
+{
+  "eligible": false
+}
+
+return:
+
+{
+  "eligible": false,
+  "reasons": [
+    {
+      "rule": "CGPA",
+      "required": 7.5,
+      "actual": 6.9,
+      "message": "Minimum CGPA required is 7.5."
+    },
+    {
+      "rule": "BACKLOG",
+      "required": 0,
+      "actual": 1,
+      "message": "No active backlogs are allowed."
+    }
+  ]
+}
+
+This makes the product much better.
+
+21. Eligibility Engine Architecture
+EligibilityService
+       │
+       ├── checkProfile()
+       │
+       ├── checkConsent()
+       │
+       ├── checkCGPA()
+       │
+       ├── checkBranch()
+       │
+       ├── checkBacklogs()
+       │
+       ├── checkBatch()
+       │
+       ├── checkApplicationWindow()
+       │
+       └── checkDuplicateApplication()
+
+Then:
+
+EligibilityResult
+{
+   eligible: true/false,
+   reasons: [],
+   checkedAt,
+   rulesVersion
+}
+rulesVersion is an excellent interview feature.
+
+For example:
+
+ELIGIBILITY_V2
+
+This lets you explain that eligibility decisions are reproducible.
+
+22. Eligibility Snapshot
+
+When a student applies, save the conditions used.
+
+Example:
+
+{
+  "cgpa": 8.1,
+  "minCgpa": 7.0,
+  "branch": "CSE",
+  "allowedBranches": ["CSE", "IT"],
+  "activeBacklogs": 0,
+  "maxBacklogs": 0,
+  "rulesVersion": "V2"
+}
+
+Why?
+
+Suppose the T&P administrator changes the job requirement later.
+
+You still know why the student was accepted when they applied.
+
+That's a very good system-design discussion point.
+
+23. Resume Matcher
+
+Your resume matcher should be presented as:
+
+Rule-based resume-to-job keyword matching, not an AI hiring decision system.
+
+This distinction is important.
+
+24. Resume Matcher Architecture
+Resume Text
+     │
+     ▼
+Normalize Text
+     │
+     ▼
+Lowercase
+     │
+     ▼
+Remove punctuation
+     │
+     ▼
+Tokenize
+     │
+     ▼
+Remove stop words
+     │
+     ▼
+Extract keywords
+     │
+     ├─────────────┐
+     │             │
+     ▼             ▼
+Resume Skills   JD Skills
+     │             │
+     └──────┬──────┘
+            ▼
+        Compare
+            │
+            ▼
+      Match Percentage
+            │
+      ┌─────┴─────┐
+      ▼           ▼
+Matched        Missing
+Skills         Skills
+25. Example
+
+Job description:
+
+React
+Node.js
+Express
+PostgreSQL
+Docker
+Git
+
+Resume:
+
+React
+Node.js
+Express
+Git
+
+Result:
+
+Match Score: 66.7%
+
+Matched:
+✓ React
+✓ Node.js
+✓ Express
+✓ Git
+
+Missing:
+• PostgreSQL
+• Docker
+26. Don't Call This "AI"
+
+For an interview:
+
+Bad:
+
+"I built AI resume screening."
+
+Better:
+
+"I implemented a deterministic NLP-style keyword matcher using tokenization, normalization, stop-word removal and skill intersection. It provides transparent recommendations rather than making hiring decisions."
+
+That is technically honest.
+
+27. Application State Machine
+
+This is another feature you should emphasize.
+
+                  ┌──────────────┐
+                  │    APPLIED   │
+                  └──────┬───────┘
+                         │
+              ┌──────────┴──────────┐
+              ▼                     ▼
+        SHORTLISTED              REJECTED
+              │
+              ▼
+          SELECTED
+
+Possible transitions:
+
+APPLIED → SHORTLISTED
+APPLIED → REJECTED
+
+SHORTLISTED → SELECTED
+SHORTLISTED → REJECTED
+
+Do not allow:
+
+REJECTED → APPLIED
+
+without an authorized workflow.
+
+28. Application State Validation
+
+Backend:
+
+currentStatus
+       +
+requestedStatus
+       ↓
+TransitionValidator
+       ↓
+Allowed?
+  │        │
+ YES       NO
+  │        │
+  ▼        ▼
+Update    400
+
+This prevents clients from sending:
+
+{
+  "status": "SELECTED"
+}
+
+and bypassing the recruitment process.
+
+29. Contact Privacy
+
+Before shortlisting:
+
+Phone:
+******7890
+
+After shortlist:
+
+Phone:
+98XXXX7890
+
+Depending on your privacy policy, you can choose to reveal the complete number only after an explicit permitted event.
+
+Backend must enforce masking.
+
+Do not rely on React to hide the phone number.
+
+Bad:
+
+GET /applications
+→ returns full phone
+
+and React masks it.
+
+Better:
+
+GET /applications
+→ backend returns masked phone
+30. Consent Architecture
+
+First login:
+
+Login
+ ↓
+Check consent
+ ↓
+No consent
+ ↓
+Consent screen
+ ↓
+Accept
+ ↓
+Store consent record
+ ↓
+Dashboard
+
+Consent table:
+
+consents
+
+id
+student_id
+consent_type
+version
+accepted
+accepted_at
+withdrawn_at
+
+Example:
+
+PLACEMENT_DATA_PROCESSING
+version: 1.0
+
+This gives you an audit trail.
+
+31. Audit Log
+
+This is very important for an enterprise project.
+
+Record actions like:
+
+LOGIN
+JOB_CREATED
+JOB_UPDATED
+APPLICATION_CREATED
+APPLICATION_SHORTLISTED
+APPLICATION_REJECTED
+PROFILE_UPDATED
+CONSENT_ACCEPTED
+CONSENT_WITHDRAWN
+CSV_EXPORTED
+
+Table:
+
+audit_logs
+
+id
+user_id
+action
+entity_type
+entity_id
+metadata
+ip_address
+user_agent
+created_at
+32. Why Audit Logs?
+
+Imagine:
+
+"Who rejected this candidate?"
+
+Your system should answer:
+
+User: recruiter@company.com
+Action: APPLICATION_REJECTED
+Application: APP-1023
+Time: 2026-09-20 11:30
+
+This makes your application feel like an enterprise system.
+
+33. Notification System
+
+Students should not repeatedly refresh the page.
+
+Architecture:
+
+Application Status Changed
+          │
+          ▼
+Application Service
+          │
+          ├──────────► Database
+          │
+          ├──────────► Notification Service
+          │
+          └──────────► Socket.IO
+                            │
+                            ▼
+                         Student
+
+Example:
+
+"Your application for Software Engineer at ABC has been shortlisted."
+34. Socket.IO Architecture
+
+Connection:
+
+Student Login
+     │
+     ▼
+Socket.IO Connection
+     │
+     ▼
+Authenticate Socket
+     │
+     ▼
+Join user room
+     │
+     ▼
+user:{userId}
+
+When recruiter shortlists:
+
+Recruiter
+   ↓
+PUT /applications/:id/status
+   ↓
+Application Service
+   ↓
+Database
+   ↓
+Socket.IO
+   ↓
+user:{studentId}
+   ↓
+Student UI updates
+35. Redis
+
+You don't need Redis for the first local version.
+
+But for production:
+
+Redis
+ ├── caching
+ ├── rate limiting
+ ├── Socket.IO adapter
+ └── temporary data
+
+Potential cache:
+
+GET /jobs/open
+
+Redis
+   ↓
+Cache Hit → Return
+   ↓
+Cache Miss
+   ↓
+PostgreSQL
+   ↓
+Redis
+36. Resume File Storage
+
+Don't save large resume PDFs directly inside PostgreSQL.
+
+Use:
+
+React
+  ↓
+Express
+  ↓
+Object Storage
+  ↓
+S3-compatible bucket
+
+Database stores:
+
+resume_id
+student_id
+file_name
+file_url/key
+mime_type
+file_size
+uploaded_at
+37. Recommended File Flow
+Student selects PDF
+       │
+       ▼
+Frontend validation
+       │
+       ▼
+Backend validation
+       │
+       ├── MIME type
+       ├── File size
+       └── extension
+       │
+       ▼
+Virus/file scan
+       │
+       ▼
+Object Storage
+       │
+       ▼
+Resume DB record
+38. Complete Backend Architecture
+
+Use:
+
+server/
+│
+├── src/
+│   │
+│   ├── app.js
+│   ├── server.js
+│   │
+│   ├── config/
+│   │   ├── env.js
+│   │   ├── db.js
+│   │   └── redis.js
+│   │
+│   ├── middleware/
+│   │   ├── auth.middleware.js
+│   │   ├── role.middleware.js
+│   │   ├── error.middleware.js
+│   │   ├── validate.middleware.js
+│   │   ├── rateLimit.middleware.js
+│   │   └── upload.middleware.js
+│   │
+│   ├── modules/
+│   │
+│   │   ├── auth/
+│   │   │   ├── auth.controller.js
+│   │   │   ├── auth.service.js
+│   │   │   ├── auth.routes.js
+│   │   │   └── auth.schema.js
+│   │   │
+│   │   ├── students/
+│   │   ├── companies/
+│   │   ├── jobs/
+│   │   ├── eligibility/
+│   │   ├── applications/
+│   │   ├── resumes/
+│   │   ├── notifications/
+│   │   ├── analytics/
+│   │   ├── audit/
+│   │   └── admin/
+│   │
+│   ├── services/
+│   │   ├── email.service.js
+│   │   ├── storage.service.js
+│   │   └── socket.service.js
+│   │
+│   ├── utils/
+│   │   ├── logger.js
+│   │   ├── errors.js
+│   │   └── pagination.js
+│   │
+│   └── routes/
+│       └── index.js
+│
+├── prisma/
+│   ├── schema.prisma
+│   └── seed.js
+│
+└── tests/
+39. Backend Request Architecture
+
+Every request follows:
+
+HTTP Request
+     │
+     ▼
+Helmet / CORS
+     │
+     ▼
+Rate Limiter
+     │
+     ▼
+Authentication
+     │
+     ▼
+Authorization
+     │
+     ▼
+Validation
+     │
+     ▼
+Controller
+     │
+     ▼
+Service
+     │
+     ▼
+Repository / Prisma
+     │
+     ▼
+PostgreSQL
+     │
+     ▼
+Service Result
+     │
+     ▼
+Controller Response
+
+This separation is extremely important.
+
+40. Controller vs Service
+
+Don't put business logic here:
+
+controller
+
+Controller should mostly do:
+
+request
+ ↓
+validate
+ ↓
+service
+ ↓
+response
+
+Example:
+
+applyForJobController()
+        ↓
+applicationService.apply()
+        ↓
+eligibilityService.check()
+        ↓
+applicationRepository.create()
+41. API Design
+Authentication
+POST   /api/auth/login
+POST   /api/auth/logout
+GET    /api/auth/me
+POST   /api/auth/refresh
+Student
+GET    /api/students/me
+PUT    /api/students/me
+POST   /api/students/me/consent
+GET    /api/students/me/applications
+GET    /api/students/me/notifications
+Jobs
+GET    /api/jobs
+GET    /api/jobs/:id
+POST   /api/jobs
+PUT    /api/jobs/:id
+PATCH  /api/jobs/:id/status
+Eligibility
+GET /api/jobs/:id/eligibility
+Applications
+POST  /api/jobs/:id/apply
+GET   /api/applications/:id
+GET   /api/applications
+PATCH /api/applications/:id/status
+Resume
+POST /api/resumes
+GET  /api/resumes
+POST /api/resume-matcher
+Admin
+GET /api/admin/dashboard
+GET /api/admin/students
+GET /api/admin/applications
+GET /api/admin/analytics
+GET /api/admin/applications/export
+42. API Response Standard
+
+Every API should follow one structure.
+
+Success:
+
+{
+  "success": true,
+  "message": "Application submitted successfully.",
+  "data": {}
+}
+
+Error:
+
+{
+  "success": false,
+  "message": "You are not eligible for this job.",
+  "errors": [
+    {
+      "field": "cgpa",
+      "message": "Minimum CGPA is 7.5."
+    }
+  ]
+}
+
+This makes frontend handling much easier.
+
+43. Frontend Architecture
+client/
+│
+├── src/
+│   │
+│   ├── app/
+│   │
+│   ├── components/
+│   │   ├── ui/
+│   │   ├── forms/
+│   │   ├── tables/
+│   │   ├── badges/
+│   │   └── modals/
+│   │
+│   ├── layouts/
+│   │   ├── StudentLayout.jsx
+│   │   ├── AdminLayout.jsx
+│   │   └── CompanyLayout.jsx
+│   │
+│   ├── pages/
+│   │   ├── auth/
+│   │   ├── student/
+│   │   ├── admin/
+│   │   └── company/
+│   │
+│   ├── features/
+│   │   ├── auth/
+│   │   ├── jobs/
+│   │   ├── applications/
+│   │   ├── resume/
+│   │   └── eligibility/
+│   │
+│   ├── hooks/
+│   ├── services/
+│   ├── store/
+│   ├── utils/
+│   └── routes/
+44. Student UI
+
+Dashboard:
+
+┌─────────────────────────────────────────────┐
+│ DCRUST Placement Portal          🔔 Profile │
+├──────────────┬──────────────────────────────┤
+│ Dashboard    │                              │
+│ Jobs         │ Welcome, Student             │
+│ Applications │                              │
+│ Resume       │ ┌──────┐ ┌──────┐ ┌──────┐ │
+│ Profile      │ │ Jobs │ │Applied│ │Short │ │
+│              │ └──────┘ └──────┘ └──────┘ │
+│              │                              │
+│              │ Available Job Drives         │
+│              │ ┌─────────────────────────┐ │
+│              │ │ Software Engineer       │ │
+│              │ │ ABC Technologies        │ │
+│              │ │ CGPA: 7.0               │ │
+│              │ │ [Check Eligibility]     │ │
+│              │ └─────────────────────────┘ │
+└──────────────┴──────────────────────────────┘
+45. Eligibility UI
+
+When eligible:
+
+┌─────────────────────────────────┐
+│ ✓ You are eligible              │
+├─────────────────────────────────┤
+│ CGPA        8.1 / 7.0      ✓   │
+│ Branch      CSE             ✓   │
+│ Backlogs    0 / 0           ✓   │
+│ Batch       2027            ✓   │
+│                                 │
+│ [ Apply Now ]                   │
+└─────────────────────────────────┘
+
+When rejected:
+
+┌─────────────────────────────────┐
+│ Application unavailable         │
+├─────────────────────────────────┤
+│ ✕ CGPA                         │
+│ Required: 7.5                  │
+│ Your CGPA: 6.9                 │
+│                                 │
+│ ✕ Active Backlogs              │
+│ Maximum: 0                     │
+│ Your Backlogs: 1               │
+└─────────────────────────────────┘
+
+This is much better than:
+
+"You are not eligible."
+
+46. Admin Dashboard
+Students
+   4,820
+
+Active Drives
+   34
+
+Applications
+   12,430
+
+Shortlisted
+   2,140
+
+Rejected
+   5,210
+
+Charts:
+
+Applications by Branch
+Applications by Company
+Shortlisting Rate
+Placement Status
+Drive Activity
+47. Recruiter Dashboard
+Company Dashboard
+
+Active Drives: 4
+Eligible Candidates: 382
+Applications: 251
+Shortlisted: 72
+Selected: 18
+
+Candidate table:
+
+Student | Branch | CGPA | Backlogs | Match | Status
+-------------------------------------------------------
+Rahul   | CSE    | 8.7  | 0        | 92%   | Applied
+Aman    | IT     | 8.3  | 0        | 88%   | Shortlisted
+48. Search and Filtering
+
+Recruiters should be able to filter:
+
+Branch
+CGPA
+Backlogs
+Graduation Year
+Application Status
+Resume Match Score
+
+Example:
+
+Branch = CSE
+CGPA >= 8
+Backlogs = 0
+Status = APPLIED
+
+Backend query handles filtering.
+
+Don't download thousands of records and filter them in React.
+
+49. Pagination
+
+Every large list:
+
+GET /api/applications?page=1&limit=20
+
+Response:
+
+{
+  "data": [],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 1540,
+    "totalPages": 77
+  }
+}
+
+This is important for scalability.
+
+50. CSV Export
+
+Architecture:
+
+Admin
+ ↓
+Export
+ ↓
+Authorization
+ ↓
+Database query
+ ↓
+Stream CSV
+ ↓
+Browser download
+
+Don't load millions of records into memory if the system grows.
+
+51. Security Architecture
+
+Minimum production security:
+
+Helmet
+CORS
+Rate Limiting
+HttpOnly Cookies
+Secure Cookies
+SameSite
+Password Hashing
+Zod Validation
+Parameterized Queries
+RBAC
+File Validation
+Audit Logs
+Security Headers
+Request Size Limits
+
+Also:
+
+Never trust frontend eligibility.
+Never trust frontend role.
+Never trust frontend status transitions.
+Never expose passwords.
+Never expose raw student contact data unnecessarily.
+52. Database Indexes
+
+This is something interviewers like.
+
+Add indexes to:
+
+users.email
+
+students.roll_number
+students.branch
+students.cgpa
+
+job_drives.status
+job_drives.application_end
+
+applications.student_id
+applications.job_id
+applications.status
+
+audit_logs.user_id
+audit_logs.created_at
+
+Why?
+
+Because frequent queries become faster.
+
+53. Important Unique Constraints
+users.email UNIQUE
+
+students.roll_number UNIQUE
+
+students.user_id UNIQUE
+
+companies.user_id UNIQUE
+
+applications(student_id, job_id) UNIQUE
+
+The last one prevents:
+
+Student applies twice
+
+even if two requests arrive at nearly the same time.
+
+54. Transaction for Applying
+
+This is a good interview topic.
+
+Suppose:
+
+Request 1 → Apply
+Request 2 → Apply
+
+at exactly the same time.
+
+Use database transaction:
+
+BEGIN
+   │
+   ├── Check job
+   ├── Check eligibility
+   ├── Check duplicate
+   └── Create application
+   │
+COMMIT
+
+Unique database constraint provides an additional safety layer.
+
+55. Race Condition
+
+Without protection:
+
+Request A
+   ↓
+Check application → doesn't exist
+
+Request B
+   ↓
+Check application → doesn't exist
+
+A → INSERT
+B → INSERT
+
+Duplicate application.
+
+With:
+
+UNIQUE(student_id, job_id)
+
+only one succeeds.
+
+Excellent thing to explain in an interview.
+
+56. Caching Strategy
+
+Cache:
+
+Open job drives
+Company profile
+Static branch list
+Dashboard summary
+
+Don't aggressively cache:
+
+Application status
+Eligibility decision
+Consent status
+
+unless invalidation is properly designed.
+
+57. Error Handling
+
+Global error middleware:
+
+try
+ ↓
+controller
+ ↓
+service
+ ↓
+error
+ ↓
+global middleware
+ ↓
+standard JSON
+
+Example:
+
+{
+  "success": false,
+  "code": "APPLICATION_NOT_ELIGIBLE",
+  "message": "Student does not meet job requirements."
+}
+
+Use machine-readable error codes.
+
+58. Important Error Codes
+AUTH_INVALID_CREDENTIALS
+AUTH_UNAUTHORIZED
+AUTH_FORBIDDEN
+
+PROFILE_INCOMPLETE
+CONSENT_REQUIRED
+
+JOB_NOT_FOUND
+JOB_CLOSED
+
+APPLICATION_DUPLICATE
+APPLICATION_NOT_ELIGIBLE
+
+INVALID_STATUS_TRANSITION
+
+RESUME_INVALID
+FILE_TOO_LARGE
+
+VALIDATION_ERROR
+INTERNAL_SERVER_ERROR
+59. Testing Architecture
+
+Your project should have:
+
+Unit Tests
+EligibilityService
+ResumeMatcher
+StatusTransitionValidator
+PrivacyMasking
+
+Example:
+
+CGPA 8.0 >= 7.0
+→ true
+CGPA 6.5 >= 7.0
+→ false
+Integration Tests
+POST /login
+POST /apply
+PATCH /application/status
+GET /jobs
+End-to-End
+
+Example:
+
+Student login
+ ↓
+Consent
+ ↓
+View job
+ ↓
+Check eligibility
+ ↓
+Apply
+ ↓
+Recruiter login
+ ↓
+Shortlist
+ ↓
+Student receives update
+
+That single E2E workflow demonstrates your entire system.
+
+60. Complexity Analysis
+
+This is where your project becomes interview-ready.
+
+Eligibility
+
+Suppose:
+
+B = number of allowed branches
+
+Checking branch membership using an array:
+
+O(B)
+
+But because branches are small, effectively constant.
+
+Overall:
+
+O(B)
+≈ O(1)
+61. Resume Matching Complexity
+
+Let:
+
+R = resume tokens
+J = job-description tokens
+
+With Sets:
+
+Resume processing = O(R)
+
+JD processing = O(J)
+
+Matching = O(R + J)
+
+So:
+
+Time = O(R + J)
+Space = O(R + J)
+
+This is much better than nested comparison:
+
+O(R × J)
+62. Database Query Complexity
+
+With indexes:
+
+Find application by student
+
+approximately:
+
+O(log N)
+
+depending on database/index structure.
+
+Without proper indexes:
+
+O(N)
+
+This is why indexing matters.
+
+63. API Complexity
+
+Normal request:
+
+O(1) application logic
++
+database query
+
+Eligibility:
+
+O(1)
+
+practically, because the number of eligibility rules is fixed.
+
+Resume matcher:
+
+O(R + J)
+64. CSV Export Complexity
+
+For:
+
+N applications
+
+export:
+
+Time: O(N)
+Space: ideally O(1) extra with streaming
+
+Don't create:
+
+massiveArray = await database.getAll()
+
+for very large datasets.
+
+Prefer streaming.
+
+65. Scalability
+
+Initial architecture:
+
+              React
+                │
+                ▼
+             Express
+                │
+        ┌───────┴───────┐
+        ▼               ▼
+    PostgreSQL        Redis
+
+If traffic increases:
+
+                 Load Balancer
+                       │
+          ┌────────────┼────────────┐
+          ▼            ▼            ▼
+       Node #1      Node #2      Node #3
+          │            │            │
+          └────────────┼────────────┘
+                       │
+                  PostgreSQL
+                       │
+                     Redis
+
+Socket.IO can use a Redis adapter for multiple backend instances.
+
+66. Future Microservices
+
+Only when necessary:
+
+                    API Gateway
+                         │
+       ┌─────────────────┼─────────────────┐
+       ▼                 ▼                 ▼
+ Placement Service   Resume Service   Notification
+       │                 │                 │
+       ▼                 ▼                 ▼
+ PostgreSQL          AI/NLP Store        Queue
+
+But don't implement this initially.
+
+Your interview explanation:
+
+"The architecture is microservice-ready but intentionally implemented as a modular monolith to minimize operational complexity."
+
+67. Queue Architecture
+
+For background tasks:
+
+Application
+     │
+     ▼
+Queue
+     │
+     ├── Email
+     ├── Notification
+     ├── Resume processing
+     ├── CSV generation
+     └── Analytics
+
+Redis + BullMQ is a good future addition.
+
+Don't make the user wait for:
+
+Email sending
+PDF parsing
+large CSV generation
+68. Observability
+
+Production system:
+
+Application
+   │
+   ├── Logs
+   ├── Metrics
+   └── Errors
+
+Log:
+
+request ID
+user ID
+endpoint
+status code
+response time
+error code
+
+Example:
+
+REQ-82731
+POST /api/jobs/123/apply
+user=STU-1001
+status=201
+duration=142ms
+69. Deployment Architecture
+
+Recommended:
+
+                    GitHub
+                       │
+                       ▼
+                 GitHub Actions
+                       │
+              ┌────────┴────────┐
+              ▼                 ▼
+          Frontend           Backend
+              │                 │
+              ▼                 ▼
+         CDN/Hosting         Docker
+                                │
+                    ┌───────────┼───────────┐
+                    ▼           ▼           ▼
+                Express      Redis      PostgreSQL
+
+For a portfolio/interview deployment, you can simplify this considerably.
+
+70. Docker Architecture
+docker-compose
+
+services:
+
+frontend
+backend
+postgres
+redis
+
+Example:
+
+Browser
+   ↓
+Frontend Container
+   ↓
+Backend Container
+   ↓
+Postgres Container
+   ↓
+Redis Container
+
+This makes local setup easy for an interviewer.
+
+71. Environment Variables
+
+Never hardcode:
+
+JWT_SECRET
+DATABASE_URL
+SMTP_PASSWORD
+S3_SECRET
+
+Use:
+
+.env
+
+Example:
+
+NODE_ENV
+PORT
+DATABASE_URL
+JWT_SECRET
+JWT_EXPIRES_IN
+COOKIE_NAME
+REDIS_URL
+STORAGE_BUCKET
+STORAGE_REGION
+STORAGE_ACCESS_KEY
+STORAGE_SECRET_KEY
+72. Frontend Data Flow
+
+Use TanStack Query-style architecture:
+
+React Component
+      │
+      ▼
+useQuery / useMutation
+      │
+      ▼
+API Service
+      │
+      ▼
+Express API
+      │
+      ▼
+PostgreSQL
+
+This avoids putting everything into global state.
+
+Global state should mainly handle:
+
+authenticated user
+theme
+UI state
+
+Server data should be handled as server data.
+
+73. Loading States
+
+Every async screen should have:
+
+Loading
+Empty
+Success
+Error
+
+Example:
+
+Loading → Skeleton
+Empty → "No applications yet."
+Success → Table
+Error → Retry
+
+This directly addresses your "zero dead ends" requirement.
+
+74. Form Validation
+
+Frontend:
+
+Zod / React Hook Form
+
+Backend:
+
+Zod
+
+Never rely only on frontend validation.
+
+Because:
+
+Frontend validation
+      ≠
+Security
+75. Product-Level User Journey
+Student
+Register/Login
+      ↓
+Consent
+      ↓
+Complete Profile
+      ↓
+Upload Resume
+      ↓
+Browse Jobs
+      ↓
+Check Eligibility
+      ↓
+Apply
+      ↓
+Resume Match
+      ↓
+Application Tracking
+      ↓
+Shortlisted
+      ↓
+Selected
+76. Recruiter Journey
+Login
+ ↓
+Company Verification
+ ↓
+Create Job
+ ↓
+Set Eligibility
+ ↓
+Open Drive
+ ↓
+Eligible Applications
+ ↓
+Review Candidates
+ ↓
+Resume Match
+ ↓
+Shortlist
+ ↓
+Interview
+ ↓
+Select
+77. T&P Journey
+Login
+ ↓
+Dashboard
+ ↓
+Manage Students
+ ↓
+Manage Companies
+ ↓
+Approve Drives
+ ↓
+Monitor Applications
+ ↓
+Shortlist / Monitor
+ ↓
+Analytics
+ ↓
+Export Reports
+ ↓
+Audit
+78. Complete System Flow
+
+This is the diagram I recommend putting in your project documentation:
+
+                         ┌──────────────────┐
+                         │     USERS        │
+                         └────────┬─────────┘
+                                  │
+                    ┌─────────────┼─────────────┐
+                    │             │             │
+                    ▼             ▼             ▼
+                STUDENT          T&P         COMPANY
+                    │             │             │
+                    └─────────────┼─────────────┘
+                                  │
+                                  ▼
+                         ┌─────────────────┐
+                         │ Authentication  │
+                         │ + RBAC          │
+                         └────────┬────────┘
+                                  │
+                                  ▼
+                         ┌─────────────────┐
+                         │   REST API      │
+                         └────────┬────────┘
+                                  │
+                    ┌─────────────┼─────────────┐
+                    │             │             │
+                    ▼             ▼             ▼
+                 JOBS       ELIGIBILITY   APPLICATIONS
+                    │             │             │
+                    │             ▼             │
+                    │      ┌─────────────┐      │
+                    │      │ Eligibility │      │
+                    │      │   Engine    │      │
+                    │      └──────┬──────┘      │
+                    │             │             │
+                    └─────────────┼─────────────┘
+                                  │
+                                  ▼
+                           ┌────────────┐
+                           │ PostgreSQL │
+                           └─────┬──────┘
+                                 │
+              ┌──────────────────┼──────────────────┐
+              │                  │                  │
+              ▼                  ▼                  ▼
+           Redis            File Storage       Audit Logs
+              │
+              ▼
+          Socket.IO
+              │
+              ▼
+        Real-time Student
+           Updates
+79. What Makes This Project Interview-Worthy
+
+Your project should demonstrate engineering decisions, not just screens.
+
+You can say:
+
+Problem
+
+Campus recruitment involves repetitive eligibility verification, fragmented application tracking and manual recruiter filtering.
+
+Solution
+
+I designed a role-based placement platform that automatically validates eligibility and manages the complete recruitment lifecycle.
+
+Interesting engineering problems
+1. Eligibility engine
+2. RBAC
+3. Application state machine
+4. Race-condition protection
+5. Privacy masking
+6. Audit logs
+7. Real-time updates
+8. Resume matching
+9. Pagination
+10. CSV export
+11. Database indexing
+12. Transaction handling
+13. Scalable architecture
+80. Your Project's Difficulty
+
+I would classify the final version as:
+
+Overall
+
+Intermediate → Advanced
+
+Not because there are hundreds of pages, but because of the backend business logic.
+
+Module	Difficulty
+Authentication	Medium
+RBAC	Medium
+Student CRUD	Easy
+Company CRUD	Easy
+Job CRUD	Easy–Medium
+Eligibility Engine	Medium
+Applications	Medium
+State Machine	Medium
+Resume Matcher	Medium
+Real-time updates	Medium–Hard
+Privacy	Medium–Hard
+Audit Logging	Medium
+CSV Export	Easy–Medium
+PostgreSQL design	Medium
+Transactions	Medium
+Redis	Medium–Hard
+Deployment	Medium
+Testing	Medium
+Scalability	Hard
+Overall project:
+
+7.5–8/10 portfolio complexity
+
+That's a much more credible level than claiming "enterprise-grade" simply because many technologies are used.
+
+81. Don't Add These Yet
+
+To keep the project realistic, I would not initially add:
+
+Kafka
+Kubernetes
+Microservices
+GraphQL
+Machine Learning
+LLM-based hiring
+Complex event sourcing
+Multiple databases
+Elasticsearch
+
+They make your project harder to explain without necessarily making it better.
+
+82. Phase-Based Development Plan
+Phase 1 — Foundation
+React
+Express
+PostgreSQL
+Prisma
+JWT
+RBAC
+
+Build:
+
+Login
+Users
+Students
+Companies
+Admin
+Phase 2 — Core Placement
+Job Drives
+Eligibility
+Applications
+Status Machine
+
+This is your MVP.
+
+Phase 3 — Resume
+Resume Upload
+Resume Parser
+Keyword Matcher
+Missing Skills
+Match Score
+Phase 4 — Enterprise Features
+Socket.IO
+Notifications
+Audit Logs
+CSV Export
+Analytics
+Privacy Masking
+Phase 5 — Production
+Redis
+Docker
+CI/CD
+Logging
+Monitoring
+Rate Limiting
+Testing
+83. Your Final Folder Architecture
+
+I recommend this as the final project structure:
+
+dcrust-placement-portal/
+│
+├── client/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── features/
+│   │   ├── layouts/
+│   │   ├── pages/
+│   │   ├── hooks/
+│   │   ├── services/
+│   │   ├── store/
+│   │   ├── routes/
+│   │   └── utils/
+│   ├── public/
+│   └── package.json
+│
+├── server/
+│   ├── src/
+│   │   ├── config/
+│   │   ├── middleware/
+│   │   ├── modules/
+│   │   │   ├── auth/
+│   │   │   ├── students/
+│   │   │   ├── companies/
+│   │   │   ├── jobs/
+│   │   │   ├── eligibility/
+│   │   │   ├── applications/
+│   │   │   ├── resumes/
+│   │   │   ├── notifications/
+│   │   │   ├── analytics/
+│   │   │   ├── audit/
+│   │   │   └── admin/
+│   │   ├── services/
+│   │   ├── utils/
+│   │   └── app.js
+│   │
+│   ├── prisma/
+│   │   ├── schema.prisma
+│   │   └── seed.js
+│   │
+│   └── tests/
+│
+├── docs/
+│   ├── architecture.md
+│   ├── database.md
+│   ├── api.md
+│   ├── security.md
+│   └── interview.md
+│
+├── docker-compose.yml
+├── README.md
+└── .gitignore
+84. The Architecture You Should Present to the Interviewer
+
+Don't overwhelm the interviewer with every feature.
+
+Start with this:
+
+                 DCRUST PLACEMENT PORTAL
+
+                        React
+                          │
+                          ▼
+                    Express REST API
+                          │
+              ┌───────────┴───────────┐
+              │                       │
+          JWT + RBAC             Socket.IO
+              │                       │
+              ▼                       │
+       Modular Services               │
+              │                       │
+       ┌──────┼─────────┐             │
+       ▼      ▼         ▼             │
+     Jobs  Eligibility Applications   │
+       │      │         │             │
+       └──────┼─────────┘             │
+              ▼                       │
+          PostgreSQL ◄────────────────┘
+              │
+       ┌──────┴──────┐
+       ▼             ▼
+     Redis       Object Storage
+
+Then explain:
+
+"The central business component is the deterministic eligibility engine. It evaluates student and job constraints on the backend before creating an application. Applications then move through a controlled state machine. Socket.IO provides real-time status updates, while PostgreSQL maintains relational consistency."
+
+That gives the interviewer a very clear mental model.
+
+85. Your Strongest Interview Talking Points
+
+If they ask "Why PostgreSQL?"
+
+"The domain has strong relationships between students, jobs, companies and applications. PostgreSQL gives me foreign keys, unique constraints and transactions that are useful for placement workflows."
+
+If they ask "Why not MongoDB?"
+
+"MongoDB could work, but the core placement workflow is relational. I prefer PostgreSQL here because correctness and transactional consistency are more important than schema flexibility."
+
+If they ask "Where is your business logic?"
+
+"Business logic lives in service modules rather than React controllers. The eligibility engine is a dedicated service."
+
+If they ask "Can frontend bypass eligibility?"
+
+"No. The frontend only requests an eligibility check. The backend independently loads the student and job data and makes the final decision."
+
+If they ask "How do you prevent duplicate applications?"
+
+"I use application-level validation plus a database-level unique constraint on student and job. The database constraint protects against concurrent requests."
+
+If they ask "Why Socket.IO?"
+
+"Application status is useful in real time. Rather than polling continuously, the backend emits status events to the student's socket room."
+
+If they ask "How will this scale?"
+
+"The initial implementation is a modular monolith. Stateless API instances can be horizontally scaled behind a load balancer, Redis can handle shared cache and Socket.IO coordination, and PostgreSQL remains the source of truth."
+
+If they ask "Is the resume matcher AI?"
+
+"No. The current implementation is deterministic keyword matching. I intentionally kept hiring decisions explainable. A future version could add an ML/NLP service as an assistive feature, but it should not independently make recruitment decisions."
+
+86. Final Recommended Architecture
+
+Your v2 final architecture should therefore be:
+
+                 ┌─────────────────────────┐
+                 │        React            │
+                 │ Tailwind + Query        │
+                 └────────────┬────────────┘
+                              │
+                              ▼
+                 ┌─────────────────────────┐
+                 │       NGINX/CDN         │
+                 └────────────┬────────────┘
+                              │
+                              ▼
+                 ┌─────────────────────────┐
+                 │    Node + Express       │
+                 │   Modular Monolith      │
+                 └────────────┬────────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        │                     │                     │
+        ▼                     ▼                     ▼
+   Auth/RBAC             Core Modules          Real-Time
+                              │                  Socket.IO
+               ┌──────────────┼──────────────┐
+               │              │              │
+               ▼              ▼              ▼
+             Jobs        Eligibility    Applications
+               │              │              │
+               └──────────────┼──────────────┘
+                              │
+               ┌──────────────┼──────────────┐
+               ▼              ▼              ▼
+          PostgreSQL         Redis       Object Storage
+               │
+               ├── Students
+               ├── Companies
+               ├── Jobs
+               ├── Applications
+               ├── Resumes
+               ├── Consents
+               ├── Notifications
+               └── Audit Logs
+The key architectural principle
+
+Keep the core simple, but make the boundaries professional.
+
+Your project should not try to impress an interviewer by having 25 technologies. It should impress them because you can explain:
+
+WHY PostgreSQL
+WHY modular monolith
+WHY service layer
+WHY backend eligibility
+WHY transactions
+WHY unique constraints
+WHY state machine
+WHY Socket.IO
+WHY Redis later
+WHY audit logs
+WHY privacy masking
+WHY deterministic resume matching
+WHY the system can scale
+
+That is what turns this from "a college placement CRUD project" into a strong full-stack system-design project suitable for MERN/full-stack interviews.
+
+If you implement the architecture above, I would position the project on your resume as:
+
+DCRUST Campus Placement & Eligibility Portal — Full-Stack Recruitment Platform
+React, Node.js, Express.js, PostgreSQL, Prisma, Redis, Socket.IO, JWT, Tailwind CSS
+Designed a role-based recruitment platform with a deterministic backend eligibility engine, application state machine, real-time status updates, privacy-aware candidate data handling, resume-JD matching, audit logging, recruiter workflows, and scalable modular-monolith architecture.
+
+
+
+prompt:::::::::::::::::::::
+I am very much happy with your analysis. So now give me a full and fully explain architecture and system design prompt for front-end and back-end separately, so which I can put on a AI web development tool with much and much simple UI/UX design, which can be easy to use in India region. Don't mess up with keyboard. I want to keep it in much and much simple. Please follow the above chat as a reference.
+
+Yes. Based on the architecture we finalized above, I would now freeze the product scope and turn it into two implementation prompts:
+
+Frontend AI Build Prompt
+Backend AI Build Prompt
+
+I am intentionally keeping the UI/UX very simple, familiar, low-clutter, mobile-friendly, India-friendly, and easy to operate. I am also keeping the backend structured enough for interviews without introducing unnecessary microservices.
+
+One important correction: I interpret your “don’t mess up with keyboard” as don’t overcomplicate the UI with unnecessary controls, interactions, shortcuts, or typing-heavy workflows. So the prompts below favor dropdowns, buttons, search, clear cards, simple forms, and guided flows.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+PROMPT  — FRONTEND
+
+
+
+
+
+
+
+
+
+Copy everything inside this prompt into your AI web-development tool.
+
+DCRUST Placement Portal — Complete Frontend AI Build Prompt
+DCRUST CAMPUS PLACEMENT & ELIGIBILITY PORTAL
+FRONTEND DEVELOPMENT PROMPT — V2
+
+You are a Senior React Frontend Architect and Product UI/UX Engineer.
+
+Build a complete, production-quality frontend for:
+
+DCRUST Campus Placement & Eligibility Portal
+
+The application is a simple, professional and easy-to-use campus placement platform for students, T&P Cell administrators and company recruiters.
+
+The frontend must connect to a separate Node.js + Express.js REST API backend.
+
+1. MAIN PRODUCT GOAL
+
+Build a placement portal that allows:
+
+STUDENTS to:
+
+Login
+Complete profile
+Give placement-data consent
+View available job drives
+Check eligibility
+Apply for eligible jobs
+Upload/view resume
+Match resume with a job description
+View missing skills
+Track applications
+Receive application status updates
+View notifications
+
+T&P CELL to:
+
+View placement dashboard
+Manage students
+Manage companies
+Create and manage job drives
+View applications
+Monitor eligibility
+View shortlisted students
+Export candidate lists
+View placement statistics
+View audit information
+
+COMPANIES to:
+
+Login
+View company dashboard
+Create/manage job drives if permitted
+View eligible applicants
+Filter candidates
+View resume match information
+Shortlist candidates
+Reject candidates
+Update application status
+2. VERY IMPORTANT UI/UX PRINCIPLE
+
+DO NOT create a complicated UI.
+
+The target users are university students, T&P staff and recruiters.
+
+The interface must feel:
+
+Simple
+Familiar
+Clean
+Fast
+Professional
+Minimal
+Easy to understand
+Easy to use on mobile
+Easy to use on a laptop
+Low cognitive load
+
+Avoid:
+
+Too many buttons
+Too many colors
+Complex animations
+Large decorative graphics
+Excessive modals
+Complex charts
+Dense dashboards
+Unnecessary menus
+Hidden actions
+Complicated keyboard interactions
+Excessive typing
+Technical terminology
+
+Prefer:
+
+Buttons
+Dropdowns
+Search boxes
+Checkboxes
+Simple tables
+Cards
+Clear labels
+Clear status badges
+Simple forms
+Step-by-step flows
+
+The application must be usable by someone who is not technically experienced.
+
+3. INDIA-FIRST UI
+
+Design the application for Indian university users.
+
+Use:
+
+Indian Rupee symbol ₹
+Indian date format where appropriate
+Indian phone number format
+Indian academic terminology
+Branch names commonly used by Indian engineering colleges
+Semester
+CGPA
+Active Backlogs
+Batch
+Roll Number
+Registration Number
+T&P Cell terminology
+
+Example branches:
+
+CSE
+IT
+ECE
+EEE
+Mechanical
+Civil
+Biotechnology
+Electrical
+Other
+
+Do not use unnecessary American terminology.
+
+Example:
+
+Use:
+
+"Placement Drive"
+
+instead of:
+
+"Recruitment Campaign"
+
+Use:
+
+"T&P Cell"
+
+instead of:
+
+"Career Services Department"
+
+Use:
+
+"Student"
+
+instead of:
+
+"Candidate User"
+
+4. TECHNOLOGY
+
+Use:
+
+React.js
+Vite
+Tailwind CSS
+React Router
+Lucide React
+TanStack Query
+React Hook Form
+Zod
+Axios
+Socket.IO Client
+
+Use reusable components.
+
+Do not duplicate UI code unnecessarily.
+
+5. DESIGN SYSTEM
+
+Use an ultra-clean:
+
+Slate + Indigo
+
+theme.
+
+Primary:
+
+Indigo
+
+Secondary:
+
+Slate
+
+Success:
+
+Emerald
+
+Error:
+
+Rose
+
+Warning:
+
+Amber
+
+Do not use many colors.
+
+Status colors:
+
+ELIGIBLE → Emerald
+
+APPLIED → Indigo
+
+SHORTLISTED → Blue/Indigo
+
+SELECTED → Emerald
+
+REJECTED → Rose
+
+PENDING → Amber
+
+CLOSED → Slate
+
+6. TYPOGRAPHY
+
+Use a clean readable font.
+
+Recommended:
+
+Inter or system sans-serif.
+
+Do not use decorative fonts.
+
+Keep:
+
+Heading sizes moderate
+Body text readable
+Buttons clearly readable
+Labels visible
+Good spacing
+
+The interface must work well on normal laptop screens.
+
+7. RESPONSIVE DESIGN
+
+Support:
+
+Desktop
+Laptop
+Tablet
+Mobile
+
+Desktop:
+
+Sidebar + main content.
+
+Mobile:
+
+Bottom navigation or collapsible menu.
+
+Do not create horizontal scrolling wherever possible.
+
+Tables on mobile should become:
+
+Cards
+Horizontal scroll only when absolutely necessary
+8. GLOBAL LAYOUT
+
+Create three layouts.
+
+StudentLayout
+
+AdminLayout
+
+CompanyLayout
+
+Common structure:
+
+Header
+Sidebar
+Main Content
+
+Desktop:
+
+Mobile:
+
+| Header |
+| Main Content |
+| Bottom Navigation |
+9. HEADER
+
+Header should contain:
+
+Left:
+
+Page title
+
+Right:
+
+Notification icon
+User name
+Profile menu
+Logout
+
+Do not put too many items in the header.
+
+10. SIDEBAR
+STUDENT
+
+Dashboard
+
+Jobs
+
+My Applications
+
+Resume
+
+Profile
+
+Notifications
+
+Logout
+
+T&P ADMIN
+
+Dashboard
+
+Students
+
+Companies
+
+Job Drives
+
+Applications
+
+Analytics
+
+Exports
+
+Audit Logs
+
+Logout
+
+COMPANY
+
+Dashboard
+
+Job Drives
+
+Applicants
+
+Shortlisted
+
+Company Profile
+
+Logout
+
+11. LOGIN PAGE
+
+Create a very simple login page.
+
+Layout:
+
+Left:
+
+DCRUST Placement Portal
+
+Short description
+
+Right:
+
+Login form
+
+Fields:
+
+Email
+
+Password
+
+Login button
+
+Optional:
+
+Show/Hide password
+
+Do not create complicated login screens.
+
+12. ROLE HANDLING
+
+Do not allow users to freely switch their role after login.
+
+The backend determines the role.
+
+After login:
+
+STUDENT → Student dashboard
+
+ADMIN → T&P dashboard
+
+COMPANY → Company dashboard
+
+Frontend must protect routes.
+
+Example:
+
+/student/*
+
+/admin/*
+
+/company/*
+
+13. AUTHENTICATION
+
+Use Axios with credentials enabled.
+
+Authentication is handled through HttpOnly cookies.
+
+Frontend must never store access tokens in localStorage.
+
+Create:
+
+useAuth()
+
+AuthProvider
+
+ProtectedRoute
+
+RoleRoute
+
+14. STUDENT DASHBOARD
+
+The dashboard must immediately show useful information.
+
+Top cards:
+
+Available Jobs
+
+My Applications
+
+Shortlisted
+
+Selected
+
+Below:
+
+"Latest Placement Drives"
+
+Each job card:
+
+Company
+
+Job Title
+
+Location
+
+Minimum CGPA
+
+Maximum Backlogs
+
+Eligible/Not Eligible
+
+Application deadline
+
+Button:
+
+View Details
+
+Do not put 10 actions on the card.
+
+15. STUDENT PROFILE
+
+Simple form.
+
+Fields:
+
+Full Name
+
+Roll Number
+
+Registration Number
+
+Branch
+
+Batch
+
+Semester
+
+CGPA
+
+Active Backlogs
+
+Phone Number
+
+Email
+
+Graduation Year
+
+Resume
+
+Button:
+
+Save Profile
+
+Use dropdowns wherever possible.
+
+Do not make students type values that can be selected.
+
+16. FIRST LOGIN CONSENT
+
+If consent has not been accepted:
+
+Show a simple full-page consent screen.
+
+Title:
+
+"Placement Data Consent"
+
+Explain in simple language:
+
+Your academic and contact information will be used for placement activities.
+
+Show:
+
+☐ I agree to the placement data processing terms.
+
+Button:
+
+Continue
+
+Do not allow the student to continue until required consent is completed.
+
+Do not use complicated legal language in the UI.
+
+Provide a "View details" option if necessary.
+
+17. JOB LIST PAGE
+
+Show:
+
+Search
+
+Branch filter
+
+Job type filter
+
+Location filter
+
+Eligibility filter
+
+Application status filter
+
+Job cards.
+
+Each card should contain only important information.
+
+Example:
+
+ABC Technologies
+
+Software Engineer
+
+₹6–8 LPA
+
+CSE / IT / ECE
+
+Minimum CGPA: 7.0
+
+Last Date: 25 Sep 2026
+
+[View Job]
+
+18. JOB DETAILS PAGE
+
+Show:
+
+Company
+
+Job title
+
+Location
+
+Salary
+
+Job description
+
+Required skills
+
+Allowed branches
+
+Minimum CGPA
+
+Maximum backlogs
+
+Application start
+
+Application end
+
+Status
+
+At bottom:
+
+[Check Eligibility]
+
+Do not immediately show Apply until eligibility has been checked.
+
+19. ELIGIBILITY EXPERIENCE
+
+When student clicks:
+
+"Check Eligibility"
+
+Call:
+
+GET /api/jobs//eligibility
+
+Show a simple result.
+
+Eligible:
+
+✓ You are eligible
+
+CGPA
+8.1 / 7.0 ✓
+
+Branch
+CSE ✓
+
+Active Backlogs
+0 / 0 ✓
+
+Batch
+2027 ✓
+
+[Apply Now]
+
+Ineligible:
+
+You are not eligible
+
+✕ CGPA
+
+Required: 7.5
+Your CGPA: 6.9
+
+✕ Active Backlogs
+
+Maximum allowed: 0
+Your backlogs: 1
+
+[Back to Jobs]
+
+Never show a vague:
+
+"You are not eligible."
+
+Always show the exact reason returned by the backend.
+
+20. APPLY CONFIRMATION
+
+When eligible:
+
+Show a small confirmation dialog:
+
+"Apply for Software Engineer at ABC Technologies?"
+
+Buttons:
+
+Cancel
+
+Confirm Apply
+
+After successful application:
+
+"Application submitted successfully."
+
+Then show:
+
+View Application
+
+21. MY APPLICATIONS
+
+Use a simple table on desktop.
+
+Columns:
+
+Company
+
+Job
+
+Applied On
+
+Match Score
+
+Status
+
+Action
+
+Statuses use badges.
+
+Example:
+
+APPLIED → Indigo
+
+SHORTLISTED → Blue
+
+SELECTED → Emerald
+
+REJECTED → Rose
+
+22. APPLICATION DETAILS
+
+Show:
+
+Company
+
+Job
+
+Applied Date
+
+Eligibility result
+
+Resume match score
+
+Current status
+
+Status timeline
+
+Example:
+
+Applied
+↓
+Shortlisted
+↓
+Selected
+
+If rejected:
+
+Applied
+↓
+Rejected
+
+Keep timeline simple.
+
+23. REAL-TIME STATUS
+
+Use Socket.IO.
+
+When company changes:
+
+APPLIED → SHORTLISTED
+
+student should receive:
+
+"Your application for Software Engineer at ABC Technologies has been shortlisted."
+
+Update the application UI automatically.
+
+Do not force the student to refresh.
+
+24. RESUME PAGE
+
+Keep extremely simple.
+
+Show:
+
+Current Resume
+
+File name
+
+Upload date
+
+Buttons:
+
+[Upload Resume]
+
+[Replace Resume]
+
+[Delete Resume]
+
+Allow:
+
+PDF
+
+DOC/DOCX if backend supports it.
+
+Display maximum file size clearly.
+
+25. RESUME MATCHER
+
+Create a simple page/modal.
+
+Title:
+
+"Resume Match"
+
+Inputs:
+
+Resume
+
+Target Job
+
+Button:
+
+Check Match
+
+Result:
+
+Match Score
+
+Matched Skills
+
+Missing Skills
+
+Example:
+
+Match Score
+
+78%
+
+Matched Skills:
+
+✓ React
+
+✓ Node.js
+
+✓ Express
+
+Missing Skills:
+
+• Docker
+
+• PostgreSQL
+
+Add message:
+
+"These suggestions are based on keyword matching and are not a hiring decision."
+
+Do not call this an AI hiring score.
+
+26. T&P ADMIN DASHBOARD
+
+Keep dashboard simple.
+
+Top cards:
+
+Total Students
+
+Active Companies
+
+Active Drives
+
+Applications
+
+Shortlisted
+
+Selected
+
+Below:
+
+Recent Drives
+
+Recent Applications
+
+Simple charts:
+
+Applications by Branch
+
+Placement Status
+
+Do not use complex analytics.
+
+27. STUDENT MANAGEMENT
+
+Admin can:
+
+Search student
+
+Filter branch
+
+Filter batch
+
+Filter CGPA
+
+View profile
+
+View applications
+
+Do not show unnecessary private information.
+
+Phone numbers should be masked where policy requires.
+
+28. COMPANY MANAGEMENT
+
+Show:
+
+Company Name
+
+Industry
+
+Email
+
+Verification status
+
+Active Drives
+
+Actions:
+
+View
+
+Verify
+
+Disable if authorized
+
+29. JOB DRIVE MANAGEMENT
+
+Admin can create:
+
+Company
+
+Job title
+
+Description
+
+Location
+
+Salary
+
+Minimum CGPA
+
+Maximum Backlogs
+
+Allowed Branches
+
+Required Skills
+
+Application Start
+
+Application End
+
+Status
+
+Use:
+
+Dropdowns
+
+Checkboxes
+
+Date pickers
+
+Number inputs
+
+Avoid free-text wherever possible.
+
+30. JOB CREATE FORM
+
+Use sections.
+
+SECTION 1
+
+Basic Information
+
+Company
+
+Job Title
+
+Location
+
+Job Type
+
+SECTION 2
+
+Eligibility
+
+Minimum CGPA
+
+Maximum Backlogs
+
+Allowed Branches
+
+Batch
+
+SECTION 3
+
+Job Details
+
+Description
+
+Skills
+
+SECTION 4
+
+Application Period
+
+Start Date
+
+End Date
+
+SECTION 5
+
+Review
+
+Show summary.
+
+Button:
+
+Create Job Drive
+
+31. COMPANY DASHBOARD
+
+Show:
+
+Active Drives
+
+Total Applicants
+
+Eligible Candidates
+
+Shortlisted
+
+Selected
+
+Then:
+
+Recent Applicants
+
+32. COMPANY APPLICANT PAGE
+
+Filters:
+
+Branch
+
+CGPA
+
+Backlogs
+
+Match Score
+
+Application Status
+
+Search by:
+
+Name
+
+Roll Number
+
+Application ID
+
+Table:
+
+Student
+
+Branch
+
+CGPA
+
+Backlogs
+
+Match Score
+
+Status
+
+Action
+
+33. STUDENT CONTACT PRIVACY
+
+Before shortlisting:
+
+Phone:
+
+98******90
+
+After authorized shortlisting:
+
+show according to backend privacy policy.
+
+IMPORTANT:
+
+Frontend must never receive unmasked private data simply to hide it visually.
+
+The backend must provide the appropriate representation.
+
+34. SHORTLIST ACTION
+
+Recruiter clicks:
+
+[Shortlist]
+
+Show confirmation:
+
+"Shortlist this student?"
+
+Confirm
+
+Cancel
+
+After success:
+
+Status becomes SHORTLISTED.
+
+Socket.IO notification is received by student.
+
+35. REJECT ACTION
+
+Show:
+
+"Reject this application?"
+
+Optional reason field.
+
+Buttons:
+
+Cancel
+
+Reject
+
+Do not make rejection reasons unnecessarily complex.
+
+36. ADMIN EXPORT
+
+Admin can select:
+
+Job Drive
+
+Status
+
+Branch
+
+Batch
+
+Then:
+
+[Export CSV]
+
+Show loading state.
+
+After export:
+
+Download file.
+
+37. NOTIFICATIONS
+
+Simple notification panel.
+
+Examples:
+
+"Your application has been shortlisted."
+
+"New placement drive is available."
+
+"Application deadline is tomorrow."
+
+Unread notification:
+
+small indicator.
+
+38. LOADING STATES
+
+Every API operation must have a loading state.
+
+Use skeletons.
+
+Examples:
+
+Job cards skeleton
+
+Table skeleton
+
+Dashboard card skeleton
+
+Profile skeleton
+
+Never leave blank white screens.
+
+39. EMPTY STATES
+
+Example:
+
+No applications:
+
+"You have not applied to any job yet."
+
+Button:
+
+"View Jobs"
+
+No jobs:
+
+"No active placement drives are available."
+
+No notifications:
+
+"No new notifications."
+
+Always provide a useful next action where possible.
+
+40. ERROR STATES
+
+Use clear messages.
+
+Bad:
+
+"Something went wrong."
+
+Better:
+
+"Unable to load jobs. Please try again."
+
+Provide:
+
+[Retry]
+
+Validation errors must appear beside the relevant field.
+
+41. ACCESSIBILITY
+
+Use:
+
+Proper labels
+Keyboard-friendly forms
+Visible focus
+Good contrast
+Large enough buttons
+Clear error messages
+Semantic HTML
+
+Do not depend only on color.
+
+For example:
+
+✓ Eligible
+
+✕ Not eligible
+
+42. PERFORMANCE
+
+Use:
+
+Lazy-loaded routes
+Code splitting
+TanStack Query caching
+Debounced search
+Pagination
+Optimized images
+Minimal dependencies
+
+Do not fetch all students/applications at once.
+
+43. FRONTEND API STRUCTURE
+
+Create:
+
+services/authApi.js
+
+services/studentApi.js
+
+services/jobApi.js
+
+services/applicationApi.js
+
+services/resumeApi.js
+
+services/adminApi.js
+
+services/companyApi.js
+
+services/notificationApi.js
+
+Do not put API calls directly inside every component.
+
+44. FRONTEND ROUTES
+
+Public:
+
+/login
+
+Protected student:
+
+/student/dashboard
+
+/student/jobs
+
+/student/jobs/
+
+/student/applications
+
+/student/applications/
+
+/student/resume
+
+/student/profile
+
+/student/notifications
+
+Protected admin:
+
+/admin/dashboard
+
+/admin/students
+
+/admin/companies
+
+/admin/jobs
+
+/admin/jobs/create
+
+/admin/applications
+
+/admin/analytics
+
+/admin/exports
+
+/admin/audit
+
+Protected company:
+
+/company/dashboard
+
+/company/jobs
+
+/company/applicants
+
+/company/shortlisted
+
+/company/profile
+
+45. COMPONENTS
+
+Build reusable components:
+
+Button
+
+Input
+
+Select
+
+Checkbox
+
+Modal
+
+Card
+
+Badge
+
+Table
+
+Pagination
+
+SearchBox
+
+Filter
+
+EmptyState
+
+ErrorState
+
+LoadingSkeleton
+
+Toast
+
+ConfirmDialog
+
+StatusTimeline
+
+FileUpload
+
+StatCard
+
+Do not duplicate these components.
+
+46. FINAL FRONTEND RULE
+
+The most important UI rule:
+
+DO NOT make the application look like a complicated enterprise ERP.
+
+It should look like a clean modern university portal.
+
+Use:
+
+Simple sidebar
+Simple cards
+Simple tables
+Simple forms
+Clear buttons
+Clear status colors
+Clear messages
+
+The user should understand what to do without reading documentation.
+
+47. FRONTEND SUCCESS CRITERIA
+
+The frontend is complete only when:
+
+Student can login.
+Student can give consent.
+Student can complete profile.
+Student can view jobs.
+Student can check eligibility.
+Student can apply.
+Student cannot apply if backend says ineligible.
+Student can upload resume.
+Student can check resume-job match.
+Student can track application.
+Student receives real-time status update.
+Admin can manage students.
+Admin can create job drives.
+Admin can view applications.
+Admin can export CSV.
+Company can view eligible applicants.
+Company can shortlist/reject.
+Contact information is privacy-aware.
+Unauthorized roles cannot access pages.
+All pages have loading, empty and error states.
+UI works on mobile and desktop.
+No unnecessary UI complexity is introduced.
+
+Build the frontend as a complete working application, not a static mockup.
+
+
+
+
+
+
+
+
+
+
+
+
+PROMPT  — BACKEND
+
+
+
+This is the backend prompt I recommend using after or alongside the frontend prompt.
+
+DCRUST Placement Portal — Complete Backend AI Build Prompt
+DCRUST CAMPUS PLACEMENT & ELIGIBILITY PORTAL
+BACKEND DEVELOPMENT PROMPT — V2
+
+You are a Senior Node.js, Express.js and PostgreSQL Backend Architect.
+
+Build a complete production-quality backend REST API for:
+
+DCRUST Campus Placement & Eligibility Portal
+
+The frontend is a separate React application.
+
+Build this backend as a:
+
+Modular Monolith
+
+Do NOT create microservices unless specifically requested.
+
+The system must be simple, reliable, secure and easy to explain in a software engineering interview.
+
+1. TECHNOLOGY
+
+Use:
+
+Node.js
+
+Express.js
+
+PostgreSQL
+
+Prisma ORM
+
+JWT
+
+HttpOnly cookies
+
+bcrypt or Argon2id
+
+Zod
+
+Socket.IO
+
+Redis-ready architecture
+
+Multer or equivalent upload middleware
+
+CSV streaming
+
+Pino logging
+
+Helmet
+
+CORS
+
+Rate limiting
+
+Jest
+
+Supertest
+
+Swagger/OpenAPI
+
+Docker-ready configuration
+
+2. CORE ROLES
+
+Three roles:
+
+STUDENT
+
+ADMIN
+
+COMPANY
+
+Do not create unnecessary roles.
+
+3. CORE MODULES
+
+Create these backend modules:
+
+auth
+
+students
+
+companies
+
+jobs
+
+eligibility
+
+applications
+
+resumes
+
+resumeMatcher
+
+notifications
+
+analytics
+
+audit
+
+admin
+
+Each module must contain, where appropriate:
+
+controller
+
+service
+
+route
+
+schema/validation
+
+repository/data access
+
+Do not put business logic inside route files.
+
+4. BACKEND ARCHITECTURE
+
+Use:
+
+HTTP Request
+
+↓
+
+Security Middleware
+
+↓
+
+Authentication Middleware
+
+↓
+
+Authorization Middleware
+
+↓
+
+Validation Middleware
+
+↓
+
+Controller
+
+↓
+
+Service
+
+↓
+
+Repository / Prisma
+
+↓
+
+PostgreSQL
+
+↓
+
+Response
+
+Business rules must live inside services.
+
+5. AUTHENTICATION
+
+Implement:
+
+POST /api/auth/login
+
+POST /api/auth/logout
+
+GET /api/auth/me
+
+POST /api/auth/refresh
+
+Use JWT authentication.
+
+Use HttpOnly cookies.
+
+Do not store JWT tokens in localStorage.
+
+Cookie should use:
+
+HttpOnly
+
+Secure in production
+
+SameSite configuration
+
+Reasonable expiry
+
+6. PASSWORD SECURITY
+
+Hash passwords using:
+
+Argon2id
+
+or
+
+bcrypt
+
+Never store plain-text passwords.
+
+Never return password hashes through API responses.
+
+7. AUTH MIDDLEWARE
+
+Create:
+
+authenticate()
+
+It must:
+
+Read authentication cookie.
+Verify JWT.
+Validate token.
+Load user.
+Attach user to request.
+Reject invalid users.
+
+Return:
+
+401 Unauthorized
+
+when authentication fails.
+
+8. RBAC
+
+Create:
+
+authorize(...roles)
+
+Example:
+
+authorize("STUDENT")
+
+authorize("ADMIN")
+
+authorize("COMPANY")
+
+Return:
+
+403 Forbidden
+
+when authenticated user does not have permission.
+
+Never trust a role sent by the frontend.
+
+9. DATABASE
+
+Use PostgreSQL.
+
+Use Prisma.
+
+Create migrations.
+
+Do not depend on application logic alone for database integrity.
+
+Use:
+
+Foreign Keys
+
+Unique Constraints
+
+Check Constraints where appropriate
+
+Indexes
+
+Transactions
+
+10. USERS TABLE
+
+Fields:
+
+id
+
+name
+
+email
+
+passwordHash
+
+role
+
+isActive
+
+createdAt
+
+updatedAt
+
+lastLoginAt
+
+Constraints:
+
+email UNIQUE
+
+11. STUDENTS TABLE
+
+Fields:
+
+id
+
+userId
+
+rollNumber
+
+registrationNumber
+
+fullName
+
+branch
+
+batch
+
+semester
+
+cgpa
+
+activeBacklogs
+
+phone
+
+graduationYear
+
+profileComplete
+
+createdAt
+
+updatedAt
+
+Constraints:
+
+userId UNIQUE
+
+rollNumber UNIQUE
+
+cgpa between 0 and 10
+
+activeBacklogs >= 0
+
+12. COMPANIES TABLE
+
+Fields:
+
+id
+
+userId
+
+companyName
+
+companyEmail
+
+industry
+
+website
+
+description
+
+verified
+
+createdAt
+
+updatedAt
+
+13. JOB DRIVES TABLE
+
+Fields:
+
+id
+
+companyId
+
+title
+
+description
+
+jobType
+
+location
+
+salaryMin
+
+salaryMax
+
+minCgpa
+
+maxBacklogs
+
+applicationStart
+
+applicationEnd
+
+status
+
+createdAt
+
+updatedAt
+
+14. JOB BRANCH TABLE
+
+Do not store branches as a comma-separated string.
+
+Create:
+
+job_branches
+
+jobId
+
+branch
+
+Use a relation.
+
+Example:
+
+Job 1:
+
+CSE
+
+IT
+
+ECE
+
+15. JOB SKILLS
+
+Create:
+
+job_skills
+
+jobId
+
+skill
+
+Use this for resume matching.
+
+16. APPLICATION TABLE
+
+Fields:
+
+id
+
+studentId
+
+jobId
+
+status
+
+eligibilitySnapshot
+
+resumeId
+
+matchScore
+
+appliedAt
+
+updatedAt
+
+shortlistedAt
+
+rejectedAt
+
+Constraints:
+
+UNIQUE(studentId, jobId)
+
+This prevents duplicate applications.
+
+17. APPLICATION STATUS
+
+Allowed:
+
+APPLIED
+
+SHORTLISTED
+
+REJECTED
+
+SELECTED
+
+WITHDRAWN
+
+Do not allow arbitrary status strings.
+
+18. APPLICATION STATE MACHINE
+
+Allowed transitions:
+
+APPLIED → SHORTLISTED
+
+APPLIED → REJECTED
+
+SHORTLISTED → SELECTED
+
+SHORTLISTED → REJECTED
+
+Do not allow invalid transitions.
+
+Create:
+
+applicationStatusService
+
+or:
+
+statusTransitionService
+
+It must validate every status change.
+
+19. CONSENT TABLE
+
+Create:
+
+consents
+
+id
+
+studentId
+
+consentType
+
+version
+
+accepted
+
+acceptedAt
+
+withdrawnAt
+
+createdAt
+
+Store consent history.
+
+Do not simply store:
+
+student.consent = true
+
+without history.
+
+20. AUDIT LOG TABLE
+
+Create:
+
+audit_logs
+
+id
+
+userId
+
+action
+
+entityType
+
+entityId
+
+metadata
+
+ipAddress
+
+userAgent
+
+createdAt
+
+Record important operations.
+
+Examples:
+
+LOGIN
+
+JOB_CREATED
+
+JOB_UPDATED
+
+APPLICATION_CREATED
+
+APPLICATION_SHORTLISTED
+
+APPLICATION_REJECTED
+
+APPLICATION_SELECTED
+
+CONSENT_ACCEPTED
+
+CONSENT_WITHDRAWN
+
+CSV_EXPORTED
+
+PROFILE_UPDATED
+
+21. NOTIFICATION TABLE
+
+Create:
+
+notifications
+
+id
+
+userId
+
+type
+
+title
+
+message
+
+read
+
+createdAt
+
+22. RESUME TABLE
+
+Create:
+
+resumes
+
+id
+
+studentId
+
+fileName
+
+storageKey
+
+mimeType
+
+fileSize
+
+createdAt
+
+updatedAt
+
+Do not store large resume files directly in PostgreSQL.
+
+Store files in object storage.
+
+PostgreSQL stores metadata.
+
+23. RESUME MATCH TABLE
+
+Create:
+
+resume_matches
+
+id
+
+resumeId
+
+jobId
+
+score
+
+matchedSkills
+
+missingSkills
+
+createdAt
+
+Do not treat this score as a hiring decision.
+
+It is an assistive matching feature.
+
+24. ELIGIBILITY ENGINE
+
+This is the most important backend business module.
+
+Create:
+
+eligibility.service.js
+
+The backend must be the final authority for eligibility.
+
+Never trust eligibility information sent by React.
+
+25. CORE ELIGIBILITY RULE
+
+Student is eligible when:
+
+student.cgpa >= job.minCgpa
+
+AND
+
+student.branch is included in job.allowedBranches
+
+AND
+
+student.activeBacklogs <= job.maxBacklogs
+
+26. ADDITIONAL VALIDATION
+
+Also check:
+
+Profile complete
+
+Consent accepted
+
+Job exists
+
+Job is active
+
+Application window is open
+
+Student has not already applied
+
+Graduation batch if configured
+
+Any additional job-specific eligibility rules
+
+27. ELIGIBILITY RESULT
+
+Return:
+
+{
+eligible: true,
+reasons: [],
+checkedAt,
+rulesVersion
+}
+
+or:
+
+{
+eligible: false,
+reasons: [
+{
+rule: "CGPA",
+required: 7.5,
+actual: 6.9,
+message: "Minimum CGPA required is 7.5."
+}
+],
+checkedAt,
+rulesVersion
+}
+
+Never return only:
+
+eligible: false
+
+28. RULE VERSION
+
+Use:
+
+rulesVersion
+
+Example:
+
+V2
+
+Save this with the eligibility result/application.
+
+Reason:
+
+Eligibility rules can change later.
+
+The system should still know which rules were used when the application was submitted.
+
+29. ELIGIBILITY SNAPSHOT
+
+When an application is created, save:
+
+Student CGPA
+
+Required CGPA
+
+Student Branch
+
+Allowed Branches
+
+Student Backlogs
+
+Allowed Backlogs
+
+Batch
+
+Rules Version
+
+Timestamp
+
+This creates a historical record of the decision.
+
+30. CHECK ELIGIBILITY API
+
+Create:
+
+GET /api/jobs//eligibility
+
+Authentication:
+
+STUDENT only
+
+Process:
+
+Load student
+
+Load job
+
+Run eligibility engine
+
+Return result
+
+Do not create an application.
+
+31. APPLY API
+
+Create:
+
+POST /api/jobs//apply
+
+Authentication:
+
+STUDENT
+
+Process:
+
+Authenticate.
+Load student.
+Check consent.
+Load job.
+Check job status.
+Check application period.
+Check duplicate application.
+Run eligibility engine.
+If ineligible, return exact reasons.
+If eligible, create application.
+Save eligibility snapshot.
+Create audit record.
+Create notification.
+Emit Socket.IO event.
+Return application.
+32. TRANSACTION
+
+Application creation must use a database transaction.
+
+Conceptually:
+
+BEGIN
+
+Check application
+
+Check eligibility
+
+Create application
+
+Create audit record
+
+Create notification
+
+COMMIT
+
+If any critical operation fails:
+
+ROLLBACK
+
+Use the database unique constraint as an additional protection against duplicate applications.
+
+33. RESUME MATCHER
+
+Create:
+
+resumeMatcher.service.js
+
+It must perform simple deterministic keyword matching.
+
+Do not pretend this is an AI model.
+
+34. MATCHING PROCESS
+
+Input:
+
+Resume text
+
+Job description
+
+Process:
+
+Convert text to lowercase.
+Remove punctuation.
+Tokenize.
+Remove common stop words.
+Normalize whitespace.
+Extract useful keywords.
+Compare resume keywords with job keywords.
+Calculate match percentage.
+Identify matched skills.
+Identify missing skills.
+35. MATCH SCORE
+
+Example:
+
+Job skills:
+
+React
+
+Node.js
+
+Express
+
+PostgreSQL
+
+Docker
+
+Git
+
+Resume:
+
+React
+
+Node.js
+
+Express
+
+Git
+
+Score:
+
+4 / 6 × 100
+
+= 66.7%
+
+Return:
+
+score
+
+matchedSkills
+
+missingSkills
+
+36. IMPORTANT RESUME MATCHING RULE
+
+Do not use the resume score to automatically reject or select a candidate.
+
+It is only an assistive feature.
+
+The eligibility engine and recruiter remain responsible for application decisions.
+
+37. APPLICATION STATUS API
+
+Create:
+
+PATCH /api/applications//status
+
+Allowed users:
+
+COMPANY
+
+ADMIN
+
+Validate:
+
+Current status
+
+Requested status
+
+User permission
+
+Application ownership/company ownership
+
+Then update.
+
+38. COMPANY ACCESS CONTROL
+
+Company users can only access applications belonging to their company's jobs.
+
+Example:
+
+Company A must never access:
+
+Company B applications.
+
+Always verify:
+
+application → job → company → authenticated user
+
+39. ADMIN ACCESS
+
+ADMIN can:
+
+View students
+
+View companies
+
+Create jobs
+
+Update jobs
+
+View applications
+
+Export applications
+
+View analytics
+
+View audit logs
+
+Manage placement data
+
+40. STUDENT ACCESS
+
+Student can only access:
+
+Their own profile
+
+Their own applications
+
+Their own resume
+
+Their own notifications
+
+Their own consent
+
+They must not be able to access another student's records by changing an ID in the URL.
+
+41. PRIVACY / CONTACT MASKING
+
+Do not expose full student phone numbers to unauthorized users.
+
+Before permitted shortlisting:
+
+98******90
+
+Backend should decide what contact information is returned.
+
+Do not rely on React masking.
+
+The API response itself must already be privacy-safe.
+
+42. API RESPONSE FORMAT
+
+Success:
+
+{
+"success": true,
+"message": "Application submitted successfully.",
+"data": {}
+}
+
+Error:
+
+{
+"success": false,
+"code": "APPLICATION_NOT_ELIGIBLE",
+"message": "You are not eligible for this job.",
+"errors": []
+}
+
+Use consistent responses across all modules.
+
+43. ERROR CODES
+
+Use clear codes:
+
+AUTH_INVALID_CREDENTIALS
+
+AUTH_UNAUTHORIZED
+
+AUTH_FORBIDDEN
+
+CONSENT_REQUIRED
+
+PROFILE_INCOMPLETE
+
+JOB_NOT_FOUND
+
+JOB_CLOSED
+
+APPLICATION_DUPLICATE
+
+APPLICATION_NOT_ELIGIBLE
+
+INVALID_STATUS_TRANSITION
+
+RESUME_INVALID
+
+FILE_TOO_LARGE
+
+VALIDATION_ERROR
+
+RESOURCE_NOT_FOUND
+
+INTERNAL_SERVER_ERROR
+
+44. VALIDATION
+
+Use Zod.
+
+Validate:
+
+Login
+
+Student profile
+
+Company profile
+
+Job creation
+
+Job update
+
+Application status
+
+Resume upload metadata
+
+Search filters
+
+Pagination
+
+CSV filters
+
+Never trust request body.
+
+45. PAGINATION
+
+All large GET endpoints must support:
+
+page
+
+limit
+
+search
+
+filters
+
+Example:
+
+GET /api/applications?page=1&limit=20
+
+Return:
+
+data
+
+pagination
+
+46. SEARCH
+
+Support simple search.
+
+Students:
+
+name
+
+roll number
+
+email
+
+Companies:
+
+company name
+
+Jobs:
+
+job title
+
+company
+
+Applications:
+
+student name
+
+roll number
+
+job
+
+Use database queries rather than downloading all data to Node.js.
+
+47. DATABASE INDEXES
+
+Create indexes for frequently queried fields.
+
+Examples:
+
+users.email
+
+students.rollNumber
+
+students.branch
+
+students.cgpa
+
+jobDrives.status
+
+jobDrives.applicationEnd
+
+applications.studentId
+
+applications.jobId
+
+applications.status
+
+notifications.userId
+
+auditLogs.userId
+
+auditLogs.createdAt
+
+48. UNIQUE CONSTRAINTS
+
+Must include:
+
+users.email UNIQUE
+
+students.userId UNIQUE
+
+students.rollNumber UNIQUE
+
+companies.userId UNIQUE
+
+applications(studentId, jobId) UNIQUE
+
+These are database-level protections.
+
+49. CSV EXPORT
+
+Endpoint:
+
+GET /api/admin/applications/export
+
+Only ADMIN.
+
+Support filters:
+
+jobId
+
+branch
+
+batch
+
+status
+
+Use CSV streaming for large result sets.
+
+Do not load a huge dataset into memory unnecessarily.
+
+50. SOCKET.IO
+
+Use Socket.IO for real-time application updates.
+
+Authenticate socket connections.
+
+Students join:
+
+user:{userId}
+
+Companies may join:
+
+company:{companyId}
+
+When application status changes:
+
+emit:
+
+application
+
+Example payload:
+
+{
+applicationId,
+status,
+jobTitle
+}
+
+51. NOTIFICATION FLOW
+
+Example:
+
+Recruiter shortlists student.
+
+Application Service
+
+↓
+
+Database update
+
+↓
+
+Notification Service
+
+↓
+
+Create notification
+
+↓
+
+Socket.IO
+
+↓
+
+Student receives notification
+
+The database remains the source of truth.
+
+Socket.IO is only for real-time delivery.
+
+52. REDIS
+
+Design the backend so Redis can be added.
+
+Use Redis for:
+
+Caching
+
+Rate limiting
+
+Socket.IO multi-instance adapter
+
+Background jobs
+
+Do not make Redis the source of truth for placement applications.
+
+PostgreSQL remains the source of truth.
+
+53. BACKGROUND JOBS
+
+Keep architecture ready for BullMQ or another queue.
+
+Future tasks:
+
+Email notifications
+
+Large CSV exports
+
+Resume processing
+
+Analytics processing
+
+Reminder notifications
+
+Do not block API requests unnecessarily.
+
+54. SECURITY
+
+Implement:
+
+Helmet
+
+CORS
+
+Rate limiting
+
+HttpOnly cookies
+
+Secure cookies in production
+
+SameSite cookie policy
+
+Password hashing
+
+Zod validation
+
+Request size limits
+
+File type validation
+
+File size limits
+
+RBAC
+
+Ownership checks
+
+Audit logs
+
+Safe error messages
+
+Do not expose stack traces in production.
+
+55. FILE UPLOAD SECURITY
+
+Resume upload must check:
+
+Allowed extension
+
+Allowed MIME type
+
+Maximum file size
+
+Filename sanitization
+
+Storage key generation
+
+Do not trust the original filename.
+
+Prefer a generated storage key.
+
+Example:
+
+resume/{studentId}/{uuid}.pdf
+
+56. LOGGING
+
+Use structured logging.
+
+Log:
+
+Request ID
+
+User ID
+
+Route
+
+HTTP method
+
+Status
+
+Response time
+
+Error code
+
+Do not log:
+
+Passwords
+
+JWTs
+
+Sensitive student data
+
+Resume content
+
+57. API ROUTE STRUCTURE
+
+Use:
+
+/api/auth
+
+/api/students
+
+/api/companies
+
+/api/jobs
+
+/api/eligibility
+
+/api/applications
+
+/api/resumes
+
+/api/notifications
+
+/api/admin
+
+/api/analytics
+
+/api/audit
+
+58. BACKEND PROJECT STRUCTURE
+
+Use:
+
+server/
+
+src/
+
+config/
+
+middleware/
+
+modules/
+
+auth/
+
+students/
+
+companies/
+
+jobs/
+
+eligibility/
+
+applications/
+
+resumes/
+
+resumeMatcher/
+
+notifications/
+
+analytics/
+
+audit/
+
+admin/
+
+services/
+
+utils/
+
+routes/
+
+tests/
+
+prisma/
+
+schema.prisma
+
+seed.js
+
+59. CONTROLLER RULE
+
+Controllers should be thin.
+
+Controller:
+
+Read request
+
+Call service
+
+Return response
+
+Do not place complex business logic in controllers.
+
+60. SERVICE RULE
+
+Services contain business rules.
+
+Examples:
+
+eligibility.service.js
+
+application.service.js
+
+resumeMatcher.service.js
+
+notification.service.js
+
+privacy.service.js
+
+audit.service.js
+
+61. REPOSITORY / DATA ACCESS
+
+Keep database queries organized.
+
+Do not scatter Prisma queries across controllers.
+
+Prefer:
+
+Controller
+
+↓
+
+Service
+
+↓
+
+Repository / Prisma
+
+62. ANALYTICS
+
+Create simple admin analytics.
+
+Metrics:
+
+Total students
+
+Total companies
+
+Active job drives
+
+Total applications
+
+Applications by branch
+
+Applications by company
+
+Shortlisted count
+
+Selected count
+
+Rejected count
+
+Placement percentage
+
+Do not create complex machine-learning analytics.
+
+63. IMPORTANT DATA RULE
+
+PostgreSQL is the source of truth.
+
+Redis is cache.
+
+Socket.IO is real-time delivery.
+
+Object storage stores files.
+
+The React frontend is never the source of truth.
+
+64. TESTING
+
+Use Jest and Supertest.
+
+Unit tests:
+
+Eligibility engine
+
+Resume matcher
+
+Status transition
+
+Privacy masking
+
+Validation
+
+Integration tests:
+
+Login
+
+Get jobs
+
+Check eligibility
+
+Apply
+
+Shortlist
+
+Reject
+
+Export
+
+65. CRITICAL TEST CASES
+
+Test:
+
+Student with CGPA 8.0 and requirement 7.0
+
+→ Eligible
+
+Student with CGPA 6.5 and requirement 7.0
+
+→ Ineligible
+
+Wrong branch
+
+→ Ineligible
+
+Too many backlogs
+
+→ Ineligible
+
+Duplicate application
+
+→ Rejected
+
+Closed job
+
+→ Rejected
+
+Missing consent
+
+→ Rejected
+
+Student accessing another student's application
+
+→ Forbidden
+
+Company accessing another company's application
+
+→ Forbidden
+
+Invalid status transition
+
+→ Rejected
+
+66. END-TO-END TEST
+
+The most important flow:
+
+Student Login
+
+↓
+
+Consent
+
+↓
+
+Complete Profile
+
+↓
+
+View Job
+
+↓
+
+Check Eligibility
+
+↓
+
+Apply
+
+↓
+
+Application Created
+
+↓
+
+Company Login
+
+↓
+
+View Applicant
+
+↓
+
+Shortlist
+
+↓
+
+Application Updated
+
+↓
+
+Notification Created
+
+↓
+
+Socket.IO Event
+
+↓
+
+Student Sees Shortlisted Status
+
+This flow must work end-to-end.
+
+67. API DOCUMENTATION
+
+Use Swagger/OpenAPI.
+
+Expose:
+
+/docs
+
+Document:
+
+Authentication
+
+Jobs
+
+Eligibility
+
+Applications
+
+Students
+
+Companies
+
+Resumes
+
+Admin
+
+Notifications
+
+68. HEALTH CHECK
+
+Create:
+
+GET /api/health
+
+Return:
+
+{
+"status": "ok",
+"database": "connected",
+"timestamp": "..."
+}
+
+Do not expose sensitive configuration.
+
+69. DATABASE TRANSACTIONS
+
+Use transactions for operations involving multiple related records.
+
+Important example:
+
+Application creation
+
+Application status update + audit + notification
+
+Consent update + audit
+
+Job creation when multiple related records are created
+
+70. PERFORMANCE
+
+Use:
+
+Indexes
+
+Pagination
+
+Selective fields
+
+Database filtering
+
+Caching where appropriate
+
+Streaming for CSV
+
+Do not fetch unnecessary data.
+
+Avoid N+1 queries.
+
+Use Prisma include/select carefully.
+
+71. SCALABILITY
+
+Initial:
+
+React
+
+↓
+
+Express Modular Monolith
+
+↓
+
+PostgreSQL
+
+↓
+
+Redis-ready
+
+↓
+
+Object Storage
+
+If traffic increases:
+
+Load Balancer
+
+↓
+
+Multiple Express instances
+
+↓
+
+Redis
+
+↓
+
+PostgreSQL
+
+Socket.IO can use a Redis adapter for multiple backend instances.
+
+Do not introduce microservices unless there is a real scaling requirement.
+
+72. DO NOT OVER-ENGINEER
+
+Do NOT add:
+
+Kafka
+
+Kubernetes
+
+GraphQL
+
+Microservices
+
+Machine learning hiring decisions
+
+Multiple databases
+
+Complex event sourcing
+
+unless explicitly requested later.
+
+The project must remain understandable to a MERN developer.
+
+73. ERROR HANDLING
+
+Use a global error middleware.
+
+Return safe production errors.
+
+Development can contain debugging information.
+
+Production must not expose:
+
+Database errors
+
+Stack traces
+
+Secrets
+
+Passwords
+
+JWTs
+
+Sensitive personal information
+
+74. ENVIRONMENT VARIABLES
+
+Use .env.
+
+Example:
+
+NODE_ENV
+
+PORT
+
+DATABASE_URL
+
+JWT_SECRET
+
+JWT_EXPIRES_IN
+
+COOKIE_NAME
+
+REDIS_URL
+
+STORAGE_ENDPOINT
+
+STORAGE_BUCKET
+
+STORAGE_ACCESS_KEY
+
+STORAGE_SECRET_KEY
+
+Do not hard-code secrets.
+
+Provide .env.example.
+
+75. DOCKER
+
+Provide Docker support.
+
+Services:
+
+backend
+
+postgres
+
+redis
+
+Optionally:
+
+frontend
+
+Use docker-compose for local development.
+
+76. SEED DATA
+
+Create realistic development seed data.
+
+Include:
+
+Students
+
+Companies
+
+Admin
+
+Job drives
+
+Applications
+
+Notifications
+
+Do not use real people's personal information.
+
+Example:
+
+student@dcrust.edu.in
+
+admin@dcrust.edu.in
+
+recruiter@example.com
+
+77. API SECURITY RULE
+
+Never trust:
+
+studentId from frontend
+
+companyId from frontend
+
+role from frontend
+
+eligibility result from frontend
+
+application status from frontend
+
+The backend must derive sensitive identity information from the authenticated user.
+
+78. PRODUCT RULE
+
+Eligibility decides whether a student can apply.
+
+Resume matching only provides skill information.
+
+Recruiters make hiring decisions.
+
+The system must not automatically reject or select candidates based only on resume matching.
+
+79. FINAL BACKEND SUCCESS CRITERIA
+
+The backend is complete only when:
+
+Authentication works.
+RBAC works.
+Student profile works.
+Consent works.
+Job drives work.
+Eligibility engine works.
+Exact eligibility reasons are returned.
+Duplicate applications are prevented.
+Applications work.
+Status transitions are validated.
+Resume upload works.
+Resume matching works.
+Missing skills are returned.
+Company ownership checks work.
+Admin permissions work.
+Student data is privacy-aware.
+Audit logs work.
+Notifications work.
+Socket.IO status updates work.
+CSV export works.
+Pagination works.
+Search and filtering work.
+Database indexes exist.
+Transactions protect important operations.
+Validation exists on every write endpoint.
+Security middleware is enabled.
+Tests cover core business logic.
+Swagger documentation exists.
+Health check exists.
+Docker configuration exists.
+Environment variables are documented.
+Backend remains a clean modular monolith.
+
+Build a complete working backend, not a mock API.
+
+3. HOW THE TWO PROMPTS FIT TOGETHER
+
+Use this architecture when giving both prompts to the AI tool:
+
+                     DCRUST PORTAL
+                           │
+             ┌─────────────┴─────────────┐
+             │                           │
+             ▼                           ▼
+        FRONTEND                      BACKEND
+        React                         Node.js
+        Tailwind                      Express
+        Router                        Prisma
+        TanStack Query                PostgreSQL
+        Socket.IO Client              Socket.IO
+             │                           │
+             └─────────────┬─────────────┘
+                           │
+                         REST
+                           │
+                           ▼
+                     PostgreSQL
+
+The frontend never directly talks to PostgreSQL.
+
+The correct flow is:
+
+React
+ ↓
+API
+ ↓
+Controller
+ ↓
+Service
+ ↓
+Prisma
+ ↓
+PostgreSQL
+4. MOST IMPORTANT USER FLOW
+
+This should be your demo flow when showing the project to an interviewer:
+
+STUDENT
+  │
+  ▼
+Login
+  │
+  ▼
+Consent
+  │
+  ▼
+Complete Profile
+  │
+  ▼
+Browse Jobs
+  │
+  ▼
+Open Job
+  │
+  ▼
+Check Eligibility
+  │
+  ├─────────────── NO
+  │                 │
+  │                 ▼
+  │           Show Exact Reasons
+  │
+  YES
+  │
+  ▼
+Apply
+  │
+  ▼
+Application Created
+  │
+  ▼
+Resume Match
+  │
+  ▼
+WAIT
+  │
+  │
+  │ Socket.IO
+  ▼
+SHORTLISTED
+
+Then demonstrate:
+
+COMPANY
+  ↓
+Open Applicants
+  ↓
+Filter CSE + CGPA
+  ↓
+View Match Score
+  ↓
+Shortlist
+
+Then:
+
+STUDENT
+  ↓
+Instant notification
+  ↓
+Status = SHORTLISTED
+
+Finally show:
+
+ADMIN
+  ↓
+Applications
+  ↓
+Filter
+  ↓
+Export CSV
+  ↓
+Audit Log
+
+That one demonstration covers almost your entire architecture.
+
+5. SIMPLE UI RULE I WANT YOU TO KEEP
+
+For this particular project, simple is better than flashy.
+
+Your homepage/dashboard should not look like this:
+
+❌ 12 cards
+❌ 5 charts
+❌ 8 colors
+❌ animated gradients
+❌ huge hero section
+❌ complicated navigation
+❌ floating buttons everywhere
+
+Instead:
+
+✓ 4–6 useful cards
+✓ 1 main action
+✓ simple sidebar
+✓ clear table
+✓ clear status
+✓ clear next step
+
+For example, the student should immediately understand:
+
+3 Jobs Available → Check Eligibility → Apply
+
+That is much more useful than a visually impressive but confusing dashboard.
+
+6. FINAL ARCHITECTURE TO FREEZE
+
+I recommend you freeze this as your project architecture:
+
+                    ┌───────────────────────┐
+                    │       STUDENT         │
+                    │       COMPANY         │
+                    │       T&P CELL        │
+                    └───────────┬───────────┘
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │      REACT UI         │
+                    │ Tailwind + Query      │
+                    └───────────┬───────────┘
+                                │
+                         HTTP + Socket.IO
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │    EXPRESS API        │
+                    │   MODULAR MONOLITH    │
+                    └───────────┬───────────┘
+                                │
+       ┌────────────────────────┼────────────────────────┐
+       │                        │                        │
+       ▼                        ▼                        ▼
+     AUTH                  ELIGIBILITY             APPLICATION
+     RBAC                     ENGINE                 SERVICE
+       │                        │                        │
+       └────────────────────────┼────────────────────────┘
+                                │
+                                ▼
+                       ┌─────────────────┐
+                       │    PRISMA ORM   │
+                       └────────┬────────┘
+                                │
+                                ▼
+                       ┌─────────────────┐
+                       │   POSTGRESQL    │
+                       └─────────────────┘
+                                │
+              ┌─────────────────┼─────────────────┐
+              ▼                 ▼                 ▼
+            Redis          Object Storage      Audit Logs
+              │
+              ▼
+          Socket.IO
+              │
+              ▼
+       Real-Time Updates
+The project's core intelligence is:
+
+Eligibility Engine
+
+The project's core workflow is:
+
+Application State Machine
+
+The project's useful extra feature is:
+
+Resume-JD Keyword Matcher
+
+The project's enterprise features are:
+
+RBAC + Privacy + Audit + Transactions + Real-Time Notifications
+
+The project's architectural strategy is:
+
+Modular Monolith → scalable later
+
+That gives you a project that remains simple enough for you to build as a MERN/full-stack developer, while being sophisticated enough to discuss architecture, database design, security, scalability, performance, business logic and system design in product-based and service-based interviews.

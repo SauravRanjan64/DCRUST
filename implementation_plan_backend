@@ -1,0 +1,228 @@
+# Implementation Plan: DCRUST Campus Placement & Eligibility Portal Backend (V2)
+
+Architect and implement a production-grade, secure, modular monolith backend for the **DCRUST Campus Placement & Eligibility Portal**, fulfilling all 79 V2 specification requirements with Node.js, Express.js, PostgreSQL, Prisma ORM, Zod, Socket.IO, and comprehensive testing.
+
+---
+
+## Architecture Overview
+
+```mermaid
+graph TD
+    Client[React Frontend / HTTP Client] -->|HTTP Request| SecMid[Helmet & Rate Limiter & CORS & Cookie Parser]
+    Client -->|WebSocket| SIO[Socket.IO Server]
+    SecMid --> ReqLogger[Pino HTTP Logger]
+    ReqLogger --> AuthMid[authenticate JWT in HttpOnly Cookie]
+    AuthMid --> RbacMid[authorize Role: STUDENT / COMPANY / ADMIN]
+    RbacMid --> ZodMid[Zod Validation Middleware]
+    ZodMid --> Controllers[Modular Controllers]
+    Controllers --> Services[Domain Services with Business Rules]
+    Services --> Repos[Prisma Repositories / DAL]
+    Repos --> DB[(PostgreSQL Database via Prisma)]
+    Services --> NotifService[Notification & Audit Service]
+    NotifService --> SIO
+    NotifService --> DB
+```
+
+The system is structured as a **Modular Monolith** where business logic lives purely inside services, controllers remain thin HTTP orchestrators, and Prisma provides type-safe, indexed, relational access to PostgreSQL.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Database Execution Environment**:
+> A Docker Compose setup (`docker-compose.yml`) will be provided for running PostgreSQL (`localhost:5432`) and Redis (`localhost:6379`).
+> To guarantee that test suites and local execution run out-of-the-box in environments where Docker or a PostgreSQL service might not yet be started, the repository layer and test harness will support both live PostgreSQL via Prisma and a resilient in-memory/isolated test runner for zero-downtime development and testing.
+
+> [!NOTE]
+> **Frontend Compatibility**:
+> The existing frontend in `src/` will be completely supported. Both `POST /api/jobs/:jobId/apply` (spec #31) and `POST /api/applications` (frontend client) will be routed to the same transaction-safe application submission service.
+
+---
+
+## Module Breakdown & Project Structure
+
+The backend will reside cleanly in `server/` with the following structure:
+
+```
+server/
+├── prisma/
+│   ├── schema.prisma              # Database schema with models, constraints, enums, indexes
+│   └── seed.js                    # Realistic seed script (admin, recruiters, students, jobs)
+├── src/
+│   ├── config/
+│   │   ├── env.js                 # Zod-validated environment config
+│   │   ├── database.js            # Prisma client instance & disconnect handlers
+│   │   ├── logger.js              # Pino structured logger with redaction
+│   │   ├── redis.js               # Redis client with graceful fallback
+│   │   └── swagger.js             # Swagger/OpenAPI definition & UI config
+│   ├── middleware/
+│   │   ├── auth.middleware.js     # authenticate() - JWT HttpOnly cookie verification
+│   │   ├── rbac.middleware.js     # authorize(...roles) - RBAC guard
+│   │   ├── validate.middleware.js # Zod validation middleware generator
+│   │   ├── error.middleware.js    # Global error handler with safe production output
+│   │   ├── rateLimiter.js         # express-rate-limit security protection
+│   │   └── upload.middleware.js   # Multer file upload (PDF validation, UUID naming)
+│   ├── modules/
+│   │   ├── auth/                  # login, logout, me, refresh, consent
+│   │   ├── students/              # profile, update, academic stats, privacy masking
+│   │   ├── companies/             # company profile, verified status, company drives, applicants
+│   │   ├── jobs/                  # job drives CRUD, job_branches, job_skills
+│   │   ├── eligibility/           # deterministic V2 eligibility engine & snapshot builder
+│   │   ├── applications/          # apply transaction, my apps, status transition state machine
+│   │   ├── resumes/               # upload metadata, storage key, resume removal
+│   │   ├── resumeMatcher/         # deterministic tokenizer & skill matcher (matched & missing)
+│   │   ├── notifications/         # DB notifications & real-time Socket.IO emission
+│   │   ├── analytics/             # admin metrics, branch distribution, placement rate
+│   │   ├── audit/                 # audit log recording & filtering
+│   │   └── admin/                 # admin student/company management, CSV export streaming
+│   ├── socket/
+│   │   └── socket.server.js       # Socket.IO auth, rooms (user:{id}, company:{id}), events
+│   ├── utils/
+│   │   ├── apiResponse.js         # Standard success/error envelopes
+│   │   ├── errorCodes.js          # Standard error code constants
+│   │   ├── privacy.util.js        # Phone number & contact masking (98******90)
+│   │   └── textTokenizer.js       # Stop-word removal & keyword extraction
+│   ├── app.js                     # Express application configuration
+│   └── server.js                  # HTTP server bootstrap with Socket.IO & graceful shutdown
+├── tests/
+│   ├── unit/
+│   │   ├── eligibility.test.js    # CGPA, branches, backlogs, consent, batch, window tests
+│   │   ├── resumeMatcher.test.js  # Tokenization, match scoring, missing skills tests
+│   │   ├── statusTransition.test.js # State machine valid/invalid transitions
+│   │   └── privacy.test.js        # Phone masking verification
+│   └── integration/
+│       ├── auth.test.js           # Login, logout, me, cookies, RBAC
+│       └── applicationFlow.test.js # End-to-end Student apply -> Company shortlist flow
+├── uploads/                       # Local safe storage for uploaded resumes
+├── .env.example
+├── Dockerfile
+├── docker-compose.yml
+└── package.json
+```
+
+---
+
+## Detailed Implementation Steps
+
+### 1. Dependencies & Configuration
+- Update `server/package.json` with production dependencies:
+  - `express`, `@prisma/client`, `prisma`, `zod`, `jsonwebtoken`, `bcryptjs`, `cookie-parser`, `cors`, `helmet`, `express-rate-limit`, `pino`, `pino-http`, `socket.io`, `multer`, `csv-stringify`, `swagger-ui-express`, `swagger-jsdoc`.
+  - Dev dependencies: `jest`, `supertest`, `dotenv`.
+
+### 2. Database Schema (`prisma/schema.prisma`)
+Define PostgreSQL models with strict relational integrity, foreign keys, unique constraints, and indexes:
+- `User`: `id`, `name`, `email` (UNIQUE), `passwordHash`, `role` (STUDENT, ADMIN, COMPANY), `isActive`, `createdAt`, `updatedAt`, `lastLoginAt`. Index on `email`.
+- `Student`: `id`, `userId` (UNIQUE), `rollNumber` (UNIQUE), `registrationNumber`, `fullName`, `branch`, `batch`, `semester`, `cgpa`, `activeBacklogs`, `phone`, `graduationYear`, `profileComplete`, `createdAt`, `updatedAt`. Indexes on `rollNumber`, `branch`, `cgpa`.
+- `Company`: `id`, `userId` (UNIQUE), `companyName`, `companyEmail`, `industry`, `website`, `description`, `verified`, `createdAt`, `updatedAt`.
+- `JobDrive`: `id`, `companyId`, `title`, `description`, `jobType`, `location`, `salaryMin`, `salaryMax`, `minCgpa`, `maxBacklogs`, `applicationStart`, `applicationEnd`, `status` (ACTIVE, CLOSED, DRAFT), `createdAt`, `updatedAt`. Indexes on `status`, `applicationEnd`.
+- `JobBranch`: `id`, `jobId`, `branch`. Unique constraint on `[jobId, branch]`.
+- `JobSkill`: `id`, `jobId`, `skill`. Unique constraint on `[jobId, skill]`.
+- `Application`: `id`, `studentId`, `jobId`, `status` (APPLIED, SHORTLISTED, REJECTED, SELECTED, WITHDRAWN), `eligibilitySnapshot` (JSON), `resumeId`, `matchScore`, `appliedAt`, `updatedAt`, `shortlistedAt`, `rejectedAt`. Unique constraint on `[studentId, jobId]`. Indexes on `studentId`, `jobId`, `status`.
+- `Consent`: `id`, `studentId`, `consentType`, `version`, `accepted`, `acceptedAt`, `withdrawnAt`, `createdAt`.
+- `AuditLog`: `id`, `userId`, `action`, `entityType`, `entityId`, `metadata` (JSON), `ipAddress`, `userAgent`, `createdAt`. Indexes on `userId`, `createdAt`.
+- `Notification`: `id`, `userId`, `type`, `title`, `message`, `read`, `createdAt`. Index on `userId`.
+- `Resume`: `id`, `studentId`, `fileName`, `storageKey`, `mimeType`, `fileSize`, `skills` (JSON), `createdAt`, `updatedAt`.
+- `ResumeMatch`: `id`, `resumeId`, `jobId`, `score`, `matchedSkills` (JSON), `missingSkills` (JSON), `createdAt`.
+
+### 3. Core Engine: Eligibility Service (V2)
+- Evaluates:
+  1. `student.cgpa >= job.minCgpa`
+  2. `job.allowedBranches.includes(student.branch)`
+  3. `student.activeBacklogs <= job.maxBacklogs`
+  4. `student.profileComplete === true`
+  5. `consent.accepted === true`
+  6. `job.status === 'ACTIVE'`
+  7. `job.applicationStart <= now <= job.applicationEnd`
+  8. Existing application does not exist (`duplicate check`)
+- Returns structured JSON output:
+  - If eligible: `{ eligible: true, reasons: [], checkedAt, rulesVersion: "V2" }`
+  - If ineligible: exact reasons array with `{ rule, required, actual, message }`
+- Captures full historical `eligibilitySnapshot` for persistent auditability.
+
+### 4. Core Engine: Application State Machine
+- Strict state transition validator:
+  - `APPLIED` → `SHORTLISTED`, `REJECTED`, `WITHDRAWN`
+  - `SHORTLISTED` → `SELECTED`, `REJECTED`
+  - All other transitions throw `INVALID_STATUS_TRANSITION` (400).
+- Validates company ownership: ensures company user only acts on applications belonging to their company's jobs.
+
+### 5. Core Engine: Resume Matcher
+- Deterministic NLP tokenizer: lowercase, strip punctuation, remove stop words, extract skills.
+- Compares resume skill set against `job_skills`.
+- Formula: `Score = (matchedSkills.length / jobSkills.length) * 100`.
+- Returns `{ score, matchedSkills, missingSkills }`.
+- Assistive only; never triggers automated hiring/rejection.
+
+### 6. Transactions & Concurrency
+- `apply()` workflow wrapped in database transaction (`$transaction`):
+  1. Lock & check duplicate
+  2. Check eligibility
+  3. Create Application record with `eligibilitySnapshot`
+  4. Create Audit Log (`APPLICATION_CREATED`)
+  5. Create Notification (`APPLICATION_SUBMITTED`)
+  6. Emit Socket.IO event to student room
+- `updateStatus()` workflow wrapped in transaction:
+  1. Verify ownership & valid transition
+  2. Update Application status & timestamp (`shortlistedAt` / `rejectedAt`)
+  3. Create Audit Log (`APPLICATION_SHORTLISTED` / `APPLICATION_REJECTED`)
+  4. Create Notification for student
+  5. Emit `application:status-updated` via Socket.IO
+
+### 7. Security, Privacy & Contact Masking
+- Helmet with standard CSP and security headers.
+- Rate limiting on sensitive endpoints (auth, apply).
+- HttpOnly, SameSite, Secure cookies for JWT session tokens.
+- Zod schema validation on every write request body & query params.
+- Server-side privacy masking: Student phone numbers masked as `98******90` unless student is shortlisted/selected and viewed by company/admin.
+- Password hashes never leaked in any response.
+
+### 8. Admin Analytics & CSV Export
+- Admin analytics calculating:
+  - Total students, companies, active drives, applications.
+  - Applications by branch, applications by company.
+  - Funnel breakdown: Applied, Shortlisted, Selected, Rejected.
+  - Placement percentage: `(selectedStudents / totalStudents) * 100`.
+- CSV export: `GET /api/admin/applications/export` streaming CSV rows using Node streams directly to response pipe, avoiding memory exhaustion.
+
+### 9. Real-time Communication (Socket.IO)
+- Socket.IO authenticated via JWT cookie.
+- Users automatically join room `user:{userId}`.
+- Recruiters join `company:{companyId}`.
+- Real-time broadcasts for status updates and incoming notifications.
+
+### 10. Swagger API Documentation & Health Check
+- OpenAPI spec exposed at `/docs` with interactive Swagger UI.
+- Health check at `GET /api/health` checking database connectivity and server uptime.
+
+### 11. Seed Data & Docker
+- Realistic DCRUST seed script creating:
+  - Admin: `admin@dcrust.edu.in`
+  - Recruiters: `tcs@recruiter.com`, `infosys@recruiter.com`
+  - Students: CSE, ECE, Mechanical students with varying CGPAs and backlogs
+  - Jobs with branches, skills, salary, backlogs, and deadlines
+  - Sample applications, consents, and notifications
+- `docker-compose.yml` defining `postgres`, `redis`, and `backend`.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+Execute automated tests using Jest and Supertest:
+```bash
+npm.cmd test -- --runInBand
+```
+1. **Unit Tests**:
+   - `eligibility.test.js`: Validates 8.0 CGPA vs 7.0 required (Pass), 6.5 CGPA vs 7.0 (Fail with reason), branch mismatch (Fail with reason), excessive backlogs (Fail with reason), closed deadline (Fail).
+   - `resumeMatcher.test.js`: Validates deterministic score calculation, matched list, missing skills list.
+   - `statusTransition.test.js`: Validates legal transitions (APPLIED -> SHORTLISTED) and illegal transitions (REJECTED -> SELECTED).
+   - `privacy.test.js`: Validates masking logic (`+91 9876543210` -> `98******10`).
+2. **Integration Tests**:
+   - `auth.test.js`: Login, cookie verification, me endpoint, logout, role-based protection.
+   - `applicationFlow.test.js`: End-to-end lifecycle test (Student logs in -> checks eligibility -> applies -> application created -> Recruiter logs in -> views applicant -> shortlists -> student receives status update).
+
+### Manual & API Verification
+- Run health check endpoint: `curl http://localhost:5000/api/health`
+- Verify Swagger UI loads at `http://localhost:5000/docs`
+- Verify CSV export streams valid CSV headers and rows
