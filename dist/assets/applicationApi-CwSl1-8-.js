@@ -1,1 +1,0 @@
-import{p as t}from"./index-BPr0Azit.js";const p={apply:async a=>(await t.post("/applications",{jobId:a})).data,getMyApplications:async()=>(await t.get("/applications/my")).data,getApplicationById:async a=>(await t.get(`/applications/${a}`)).data};export{p as a};

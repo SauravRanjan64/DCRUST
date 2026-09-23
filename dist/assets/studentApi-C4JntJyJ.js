@@ -1,1 +1,0 @@
-import{p as e}from"./index-BPr0Azit.js";const r={getProfile:async()=>(await e.get("/student/profile")).data,updateProfile:async t=>(await e.put("/student/profile",t)).data,getStats:async()=>(await e.get("/student/stats")).data};export{r as s};

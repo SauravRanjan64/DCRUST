@@ -52,22 +52,32 @@ Official, production-quality frontend application for the **Deenbandhu Chhotu Ra
 
 ## 🚀 Getting Started
 
-### Backend database: MongoDB
+### Run frontend and backend together
 
-The Express backend uses MongoDB through Mongoose. Its default local connection is
-`mongodb://localhost:27017/dcrust`; set `MONGODB_URI` in `server/.env` to override it.
+From the project root, install the root development dependency once and start both applications with one command:
 
 ```bash
-cd server
+npm install
+npm run dev
+```
+
+The frontend runs at `http://localhost:5173` and the backend runs at `http://localhost:5000`.
+
+### Backend database: MongoDB
+
+The Express backend uses MongoDB through Mongoose. Set `MONGODB_URI` in `backend/.env`
+to the MongoDB Atlas connection string.
+
+```bash
+cd backend
 npm install
 npm run db:seed
 npm run dev
 ```
 
-Or start MongoDB, Redis, and the backend with `docker compose up --build`.
-
 ### 1. Install Dependencies
 ```bash
+cd frontend
 npm install
 ```
 
@@ -82,7 +92,8 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 ### 3. (Optional) Run Companion Express Backend
 ```bash
 # In another terminal:
-npm run server
+cd backend
+npm run dev
 ```
 
 ---

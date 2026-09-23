@@ -1,1 +1,0 @@
-import{p as s}from"./index-BPr0Azit.js";const i={getJobs:async(t={})=>(await s.get("/jobs",{params:t})).data,getJobById:async t=>(await s.get(`/jobs/${t}`)).data,checkEligibility:async t=>(await s.get(`/jobs/${t}/eligibility`)).data};export{i as j};
